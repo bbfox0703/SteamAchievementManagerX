@@ -184,7 +184,8 @@ namespace SAM.Game
             {
                 var key = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked");
                 info.ImageIndex = this._AchievementImageList.Images.Count;
-                this._AchievementImageList.Images.Add(key, icon);
+                this._AchievementImageList.Images.Add(key, new Bitmap(icon));
+                icon.Dispose();
             }
         }
 
@@ -193,20 +194,18 @@ namespace SAM.Game
             if (e.Error == null && e.Cancelled == false)
             {
                 var info = (Stats.AchievementInfo)e.UserState;
-
-                Bitmap bitmap = null;
+                Image image = null;
                 try
                 {
                     using var stream = new MemoryStream(e.Result);
-                    using var image = Image.FromStream(stream);
-                    bitmap = new Bitmap(image);
+                    image = Image.FromStream(stream);
                 }
                 catch (Exception)
                 {
-                    bitmap = null;
+                    image = null;
                 }
 
-                if (bitmap != null && this._UseIconCache == true)
+                if (image != null && this._UseIconCache == true)
                 {
                     var cachePath = this.GetAchievementCachePath(info);
                     if (cachePath != null)
@@ -222,7 +221,8 @@ namespace SAM.Game
                     }
                 }
 
-                this.AddAchievementIcon(info, bitmap);
+                this.AddAchievementIcon(info, image);
+                image = null;
                 this._AchievementListView.Update();
             }
 
@@ -698,9 +698,8 @@ namespace SAM.Game
                         {
                             using (var file = File.OpenRead(cachePath))
                             {
-                                using var image = Image.FromStream(file);
-                                Bitmap bitmap = new(image);
-                                this.AddAchievementIcon(info, bitmap);
+                                var image = Image.FromStream(file);
+                                this.AddAchievementIcon(info, image);
                                 return;
                             }
                         }
