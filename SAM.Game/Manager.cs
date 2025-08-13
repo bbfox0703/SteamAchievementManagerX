@@ -185,6 +185,7 @@ namespace SAM.Game
                 var key = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked");
                 info.ImageIndex = this._AchievementImageList.Images.Count;
                 this._AchievementImageList.Images.Add(key, icon);
+                icon.Dispose();
             }
         }
 
@@ -223,6 +224,7 @@ namespace SAM.Game
                 }
 
                 this.AddAchievementIcon(info, bitmap);
+                bitmap = null;
                 this._AchievementListView.Update();
             }
 
@@ -699,8 +701,7 @@ namespace SAM.Game
                             using (var file = File.OpenRead(cachePath))
                             {
                                 using var image = Image.FromStream(file);
-                                Bitmap bitmap = new(image);
-                                this.AddAchievementIcon(info, bitmap);
+                                this.AddAchievementIcon(info, new Bitmap(image));
                                 return;
                             }
                         }
