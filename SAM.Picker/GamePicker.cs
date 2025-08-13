@@ -30,7 +30,7 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Windows.Forms;
 using System.Xml.XPath;
 using static SAM.Picker.InvariantShorthand;
@@ -41,6 +41,7 @@ namespace SAM.Picker
     internal partial class GamePicker : Form
     {
         private readonly API.Client _SteamClient;
+        private readonly HttpClient _HttpClient;
 
         private readonly Dictionary<uint, GameInfo> _Games;
         private readonly List<GameInfo> _FilteredGames;
@@ -86,6 +87,8 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
+            this._HttpClient = new HttpClient();
+            this.FormClosed += (_, _) => this._HttpClient.Dispose();
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
@@ -111,6 +114,11 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
+        private async System.Threading.Tasks.Task<byte[]> DownloadDataAsync(Uri uri)
+        {
+            return await this._HttpClient.GetByteArrayAsync(uri);
+        }
+
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
             this._PickerStatusLabel.Text = "Downloading game list...";
@@ -118,11 +126,7 @@ namespace SAM.Picker
             bool usedLocal;
             byte[] bytes = GameList.Load(
                 AppDomain.CurrentDomain.BaseDirectory,
-                uri =>
-                {
-                    using WebClient downloader = new();
-                    return downloader.DownloadData(uri);
-                },
+                uri => this.DownloadDataAsync(uri).GetAwaiter().GetResult(),
                 out usedLocal);
 
             if (usedLocal == true)
@@ -313,33 +317,30 @@ namespace SAM.Picker
                 }
             }
 
-            using (WebClient downloader = new())
+            try
             {
-                try
+                var data = this.DownloadDataAsync(new Uri(info.ImageUrl)).GetAwaiter().GetResult();
+                using (MemoryStream stream = new(data, false))
                 {
-                    var data = downloader.DownloadData(new Uri(info.ImageUrl));
-                    using (MemoryStream stream = new(data, false))
-                    {
-                        Bitmap bitmap = new(stream);
-                        e.Result = new LogoInfo(info.Id, bitmap);
+                    Bitmap bitmap = new(stream);
+                    e.Result = new LogoInfo(info.Id, bitmap);
 
-                        if (this._UseIconCache == true && cacheFile != null)
+                    if (this._UseIconCache == true && cacheFile != null)
+                    {
+                        try
                         {
-                            try
-                            {
-                                bitmap.Save(cacheFile, ImageFormat.Png);
-                            }
-                            catch (Exception)
-                            {
-                                this._UseIconCache = false;
-                            }
+                            bitmap.Save(cacheFile, ImageFormat.Png);
+                        }
+                        catch (Exception)
+                        {
+                            this._UseIconCache = false;
                         }
                     }
                 }
-                catch (Exception)
-                {
-                    e.Result = new LogoInfo(info.Id, null);
-                }
+            }
+            catch (Exception)
+            {
+                e.Result = new LogoInfo(info.Id, null);
             }
         }
 
