@@ -54,6 +54,11 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="games.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />
   </ItemGroup>
 </Project>

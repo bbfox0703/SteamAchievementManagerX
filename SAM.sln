@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SAM.API", "SAM.API\SAM.API.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SAM.Game", "SAM.Game\SAM.Game.csproj", "{7640DE31-E54E-45F9-9CF0-8DF3A3EA30FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SAM.Picker.Tests", "SAM.Picker.Tests\SAM.Picker.Tests.csproj", "{22A4F2EE-033C-4B90-8DAF-1F508E38E44C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -27,6 +29,10 @@ Global
 		{7640DE31-E54E-45F9-9CF0-8DF3A3EA30FC}.Debug|x64.Build.0 = Debug|x64
 		{7640DE31-E54E-45F9-9CF0-8DF3A3EA30FC}.Release|x64.ActiveCfg = Release|x64
 		{7640DE31-E54E-45F9-9CF0-8DF3A3EA30FC}.Release|x64.Build.0 = Release|x64
+		{22A4F2EE-033C-4B90-8DAF-1F508E38E44C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{22A4F2EE-033C-4B90-8DAF-1F508E38E44C}.Debug|x64.Build.0 = Debug|Any CPU
+		{22A4F2EE-033C-4B90-8DAF-1F508E38E44C}.Release|x64.ActiveCfg = Release|Any CPU
+		{22A4F2EE-033C-4B90-8DAF-1F508E38E44C}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
