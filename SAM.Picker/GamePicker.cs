@@ -115,10 +115,19 @@ namespace SAM.Picker
         {
             this._PickerStatusLabel.Text = "Downloading game list...";
 
-            byte[] bytes;
-            using (WebClient downloader = new())
+            bool usedLocal;
+            byte[] bytes = GameList.Load(
+                AppDomain.CurrentDomain.BaseDirectory,
+                uri =>
+                {
+                    using WebClient downloader = new();
+                    return downloader.DownloadData(uri);
+                },
+                out usedLocal);
+
+            if (usedLocal == true)
             {
-                bytes = downloader.DownloadData(new Uri("https://gib.me/sam/games.xml"));
+                e.Result = "Loaded bundled game list due to network failure.";
             }
 
             List<KeyValuePair<uint, string>> pairs = new();
@@ -150,7 +159,19 @@ namespace SAM.Picker
             if (e.Error != null || e.Cancelled == true)
             {
                 this.AddDefaultGames();
-                MessageBox.Show(e.Error.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    "Unable to load game list from network or local file. Using default list.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            else if (e.Result is string message)
+            {
+                MessageBox.Show(
+                    message,
+                    "Information",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
 
             this.RefreshGames();
