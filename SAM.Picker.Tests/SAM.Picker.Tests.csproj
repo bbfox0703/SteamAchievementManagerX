@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\\SAM.Picker\\GameList.cs" Link="GameList.cs" />
+    <Compile Include="..\\SAM.Picker\\ImageUrlValidator.cs" Link="ImageUrlValidator.cs" />
     <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
