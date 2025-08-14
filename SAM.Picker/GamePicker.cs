@@ -341,6 +341,12 @@ namespace SAM.Picker
 
             this._LogosAttempted.Add(info.ImageUrl);
 
+            if (ImageUrlValidator.TryCreateUri(info.ImageUrl, out var uri) == false)
+            {
+                e.Result = new LogoInfo(info.Id, null);
+                return;
+            }
+
             string cacheFile = null;
             if (this._UseIconCache == true)
             {
@@ -371,7 +377,7 @@ namespace SAM.Picker
 
             try
             {
-                var (data, contentType) = this.DownloadDataAsync(new Uri(info.ImageUrl)).GetAwaiter().GetResult();
+                var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
                 if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
                 {
                     throw new InvalidDataException("Invalid content type");
