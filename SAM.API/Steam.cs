@@ -40,11 +40,16 @@ namespace SAM.API
             [DllImport("kernel32.dll", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             internal static extern bool FreeLibrary(IntPtr module);
-            [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            internal static extern bool SetDllDirectory(string path);
 
-            internal const uint LoadWithAlteredSearchPath = 8;
+            [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+            internal static extern IntPtr AddDllDirectory(string path);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool RemoveDllDirectory(IntPtr handle);
+
+            internal const uint LoadLibrarySearchDefaultDirs = 0x00001000;
+            internal const uint LoadLibrarySearchUserDirs = 0x00000400;
         }
 
         private static Delegate GetExportDelegate<TDelegate>(IntPtr module, string name)
@@ -142,21 +147,28 @@ namespace SAM.API
             }
 
             var binPath = Path.Combine(path, "bin");
-            if (!Native.SetDllDirectory(path))
-            {
-                return false;
-            }
 
+            IntPtr pathHandle = IntPtr.Zero;
+            IntPtr binHandle = IntPtr.Zero;
             try
             {
-                if (!Native.SetDllDirectory(binPath))
+                pathHandle = Native.AddDllDirectory(path);
+                if (pathHandle == IntPtr.Zero)
+                {
+                    return false;
+                }
+
+                binHandle = Native.AddDllDirectory(binPath);
+                if (binHandle == IntPtr.Zero)
                 {
                     return false;
                 }
 
                 string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
-                string libraryPath = Path.Combine(path, library);
-                IntPtr module = Native.LoadLibraryEx(libraryPath, IntPtr.Zero, Native.LoadWithAlteredSearchPath);
+                IntPtr module = Native.LoadLibraryEx(
+                    library,
+                    IntPtr.Zero,
+                    Native.LoadLibrarySearchDefaultDirs | Native.LoadLibrarySearchUserDirs);
                 if (module == IntPtr.Zero)
                 {
                     return false;
@@ -185,7 +197,15 @@ namespace SAM.API
             }
             finally
             {
-                Native.SetDllDirectory(string.Empty);
+                if (binHandle != IntPtr.Zero)
+                {
+                    Native.RemoveDllDirectory(binHandle);
+                }
+
+                if (pathHandle != IntPtr.Zero)
+                {
+                    Native.RemoveDllDirectory(pathHandle);
+                }
             }
         }
         public static void Unload()
