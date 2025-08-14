@@ -182,6 +182,14 @@ namespace SAM.API
                     {
                         return false;
                     }
+
+                    // Pin the certificate identity to Valve's known subject
+                    const string ValveSubject = "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US";
+                    var subject = certificate.Subject;
+                    if (string.Equals(subject, ValveSubject, StringComparison.OrdinalIgnoreCase) == false)
+                    {
+                        return false;
+                    }
                 }
                 catch
                 {
