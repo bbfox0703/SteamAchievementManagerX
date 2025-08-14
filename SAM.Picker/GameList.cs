@@ -1,11 +1,19 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 
 namespace SAM.Picker
 {
     internal static class GameList
     {
+        // Maximum allowed size for the games.xml download.
+        internal const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
+
+        // SHA256 checksum of the bundled games.xml file. Used to verify downloads.
+        private static readonly byte[] ExpectedHash = Convert.FromHexString(
+            "58e58775d292f2c01821c8a04c162c9b37d3e73ad937f067edddfd67a56e80cb");
+
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
             if (httpClient == null)
@@ -31,11 +39,30 @@ namespace SAM.Picker
 
             try
             {
-                bytes = httpClient.GetByteArrayAsync(new Uri("https://gib.me/sam/games.xml"))
+                using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("https://gib.me/sam/games.xml"));
+                using var response = httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
                     .GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+
+                var contentLength = response.Content.Headers.ContentLength;
+                if (contentLength == null || contentLength.Value > MaxDownloadBytes)
+                {
+                    throw new HttpRequestException("Response too large or missing length");
+                }
+
+                using var stream = response.Content.ReadAsStream();
+                bytes = ReadWithLimit(stream, MaxDownloadBytes);
+
+                // verify checksum
+                var hash = SHA256.HashData(bytes);
+                if (CryptographicOperations.FixedTimeEquals(hash, ExpectedHash) == false)
+                {
+                    throw new InvalidDataException("Checksum mismatch");
+                }
             }
-            catch (HttpRequestException)
+            catch (Exception)
             {
+                bytes = null;
             }
 
             if (bytes != null)
@@ -78,6 +105,24 @@ namespace SAM.Picker
             }
 
             return bytes;
+        }
+
+        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
+        {
+            using MemoryStream memory = new();
+            byte[] buffer = new byte[81920];
+            int read;
+            int total = 0;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
     }
 }

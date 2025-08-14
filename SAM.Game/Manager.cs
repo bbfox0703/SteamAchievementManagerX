@@ -23,12 +23,13 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
@@ -44,11 +45,13 @@ namespace SAM.Game
         private readonly long _GameId;
         private readonly API.Client _SteamClient;
 
-        //private readonly WebClient _IconDownloader = new();
-        private WebClient _IconDownloader;
+        private readonly HttpClient _HttpClient;
 
         private readonly string _IconCacheDirectory;
         private bool _UseIconCache;
+
+        private const int MaxIconBytes = 512 * 1024; // 512 KB
+        private const int MaxIconDimension = 1024; // px
 
         private readonly List<Stats.AchievementInfo> _IconQueue = new();
         private readonly List<Stats.StatDefinition> _StatDefinitions = new();
@@ -128,8 +131,8 @@ namespace SAM.Game
             this._GameId = gameId;
             this._SteamClient = client;
 
-            this._IconDownloader = new();
-            this._IconDownloader.DownloadDataCompleted += this.OnIconDownload;
+            this._HttpClient = new HttpClient();
+            this.FormClosed += (_, _) => this._HttpClient.Dispose();
 
             this._IconCacheDirectory = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
@@ -189,61 +192,11 @@ namespace SAM.Game
             }
         }
 
-        private void OnIconDownload(object sender, DownloadDataCompletedEventArgs e)
-        {
-            if (e.Error == null && e.Cancelled == false)
-            {
-                var info = (Stats.AchievementInfo)e.UserState;
-                Image image = null;
-                try
-                {
-                    using var stream = new MemoryStream(e.Result);
-                    image = Image.FromStream(stream);
-                }
-                catch (Exception)
-                {
-                    image = null;
-                }
-
-                if (image != null && this._UseIconCache == true)
-                {
-                    var cachePath = this.GetAchievementCachePath(info);
-                    if (cachePath != null)
-                    {
-                        try
-                        {
-                            File.WriteAllBytes(cachePath, e.Result);
-                        }
-                        catch (Exception)
-                        {
-                            this._UseIconCache = false;
-                        }
-                    }
-                }
-
-                this.AddAchievementIcon(info, image);
-                image = null;
-                this._AchievementListView.Update();
-            }
-
-            this.DownloadNextIcon();
-        }
-
-        private void DownloadNextIcon()
+        private async void DownloadNextIcon()
         {
             if (this._IconQueue.Count == 0)
             {
                 this._DownloadStatusLabel.Visible = false;
-                return;
-            }
-
-            if (this._IconDownloader == null)
-            {
-                return;
-            }
-
-            if (this._IconDownloader.IsBusy == true)
-            {
                 return;
             }
 
@@ -253,10 +206,88 @@ namespace SAM.Game
             var info = this._IconQueue[0];
             this._IconQueue.RemoveAt(0);
 
+            Bitmap bitmap = null;
+            try
+            {
+                bitmap = await this.DownloadIconAsync(info);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
 
-            this._IconDownloader.DownloadDataAsync(
-                new Uri(_($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{this._GameId}/{(info.IsAchieved == true ? info.IconNormal : info.IconLocked)}")),
-                info);
+            this.AddAchievementIcon(info, bitmap);
+            this._AchievementListView.Update();
+
+            this.DownloadNextIcon();
+        }
+
+        private async System.Threading.Tasks.Task<Bitmap?> DownloadIconAsync(Stats.AchievementInfo info)
+        {
+            var uri = new Uri(_($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{this._GameId}/{(info.IsAchieved == true ? info.IconNormal : info.IconLocked)}"));
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var contentLength = response.Content.Headers.ContentLength;
+            if (contentLength == null || contentLength.Value > MaxIconBytes)
+            {
+                throw new HttpRequestException("Response too large or missing length");
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+            {
+                throw new InvalidDataException("Invalid content type");
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var data = ReadWithLimit(stream, MaxIconBytes);
+
+            using var imageStream = new MemoryStream(data, false);
+            using var image = Image.FromStream(imageStream, false, false);
+            if (image.Width > MaxIconDimension || image.Height > MaxIconDimension)
+            {
+                throw new InvalidDataException("Image dimensions too large");
+            }
+
+            Bitmap bitmap = new(image);
+
+            if (this._UseIconCache == true)
+            {
+                var cachePath = this.GetAchievementCachePath(info);
+                if (cachePath != null)
+                {
+                    try
+                    {
+                        File.WriteAllBytes(cachePath, data);
+                    }
+                    catch (Exception)
+                    {
+                        this._UseIconCache = false;
+                    }
+                }
+            }
+
+            return bitmap;
+        }
+
+        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
+        {
+            using MemoryStream memory = new();
+            byte[] buffer = new byte[81920];
+            int read;
+            int total = 0;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
 
         private static string TranslateError(int id) => id switch
@@ -696,11 +727,16 @@ namespace SAM.Game
                     {
                         if (File.Exists(cachePath) == true)
                         {
-                            using (var file = File.OpenRead(cachePath))
+                            var bytes = File.ReadAllBytes(cachePath);
+                            if (bytes.Length <= MaxIconBytes)
                             {
-                                var image = Image.FromStream(file);
-                                this.AddAchievementIcon(info, image);
-                                return;
+                                using var stream = new MemoryStream(bytes, false);
+                                using var image = Image.FromStream(stream, false, false);
+                                if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
+                                {
+                                    this.AddAchievementIcon(info, image);
+                                    return;
+                                }
                             }
                         }
                     }
@@ -1292,13 +1328,6 @@ namespace SAM.Game
         {
             if (disposing)
             {
-                if (this._IconDownloader != null)
-                {
-                    this._IconDownloader.CancelAsync();
-                    this._IconDownloader.Dispose();
-                    this._IconDownloader = null;
-                }
-
                 if (components != null)
                 {
                     components.Dispose();
