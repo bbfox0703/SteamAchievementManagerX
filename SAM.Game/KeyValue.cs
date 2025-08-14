@@ -35,7 +35,7 @@ namespace SAM.Game
         public object? Value;
         public bool Valid;
 
-        public List<KeyValue> Children = null;
+        public List<KeyValue>? Children = null;
 
         public KeyValue this[string key]
         {
@@ -196,7 +196,7 @@ namespace SAM.Game
             return $"{this.Name} = {this.Value}";
         }
 
-        public static KeyValue LoadAsBinary(string path)
+        public static KeyValue? LoadAsBinary(string path)
         {
             if (File.Exists(path) == false)
             {
