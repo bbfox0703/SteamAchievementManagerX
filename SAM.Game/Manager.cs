@@ -33,6 +33,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
 using static SAM.Game.InvariantShorthand;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using APITypes = SAM.API.Types;
@@ -52,6 +53,7 @@ namespace SAM.Game
 
         private const int MaxIconBytes = 512 * 1024; // 512 KB
         private const int MaxIconDimension = 1024; // px
+        private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly List<Stats.AchievementInfo> _IconQueue = new();
         private readonly List<Stats.StatDefinition> _StatDefinitions = new();
@@ -249,8 +251,18 @@ namespace SAM.Game
                 return null;
             }
 
-            var uri = new Uri(_($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{this._GameId}/{icon}"));
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            var fileName = Path.GetFileName(icon);
+            if (string.IsNullOrEmpty(fileName) || fileName != icon || IconNameRegex.IsMatch(fileName) == false)
+            {
+                return null;
+            }
+
+            var builder = new UriBuilder("https", "cdn.steamstatic.com")
+            {
+                Path = $"/steamcommunity/public/images/apps/{this._GameId}/{Uri.EscapeDataString(fileName)}"
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
             using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
