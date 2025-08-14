@@ -1,17 +1,16 @@
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Security;
+using System.Net.Http;
 
 namespace SAM.Picker
 {
     internal static class GameList
     {
-        public static byte[] Load(string baseDirectory, Func<Uri, byte[]> downloader, out bool usedLocal)
+        public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
-            if (downloader == null)
+            if (httpClient == null)
             {
-                throw new ArgumentNullException(nameof(downloader));
+                throw new ArgumentNullException(nameof(httpClient));
             }
 
             string localPath = Path.Combine(baseDirectory, "games.xml");
@@ -32,18 +31,10 @@ namespace SAM.Picker
 
             try
             {
-                RemoteCertificateValidationCallback previousCallback = ServicePointManager.ServerCertificateValidationCallback;
-                ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
-                try
-                {
-                    bytes = downloader(new Uri("https://gib.me/sam/games.xml"));
-                }
-                finally
-                {
-                    ServicePointManager.ServerCertificateValidationCallback = previousCallback;
-                }
+                bytes = httpClient.GetByteArrayAsync(new Uri("https://gib.me/sam/games.xml"))
+                    .GetAwaiter().GetResult();
             }
-            catch
+            catch (HttpRequestException)
             {
             }
 
