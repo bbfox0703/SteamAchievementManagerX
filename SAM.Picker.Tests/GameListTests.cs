@@ -62,6 +62,23 @@ public class GameListTests
         Assert.NotNull(bytes);
     }
 
+    [Fact]
+    public void HonorsHttpClientTimeout()
+    {
+        string temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+        using HttpClient client = new(new SlowHandler())
+        {
+            Timeout = TimeSpan.FromMilliseconds(100),
+        };
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Throws<InvalidOperationException>(() => GameList.Load(temp, client, out _));
+        sw.Stop();
+
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(1));
+    }
+
     private sealed class FailingHandler : HttpMessageHandler
     {
         protected override System.Threading.Tasks.Task<HttpResponseMessage> SendAsync(
@@ -103,6 +120,20 @@ public class GameListTests
             response.Content.Headers.ContentLength = data.Length;
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/xml");
             return System.Threading.Tasks.Task.FromResult(response);
+        }
+    }
+
+    private sealed class SlowHandler : HttpMessageHandler
+    {
+        protected override async System.Threading.Tasks.Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(Array.Empty<byte>()),
+            };
         }
     }
 }

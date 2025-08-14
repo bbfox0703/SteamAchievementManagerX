@@ -131,7 +131,10 @@ namespace SAM.Game
             this._GameId = gameId;
             this._SteamClient = client;
 
-            this._HttpClient = new HttpClient();
+            this._HttpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
             this.FormClosed += (_, _) => this._HttpClient.Dispose();
 
             this._IconCacheDirectory = Path.Combine(
