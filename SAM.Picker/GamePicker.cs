@@ -31,7 +31,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Windows.Forms;
+using System.Xml;
 using System.Xml.XPath;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
@@ -190,6 +192,10 @@ namespace SAM.Picker
             this._PickerStatusLabel.Text = "Checking game ownership...";
             foreach (var kv in pairs)
             {
+                if (this._Games.ContainsKey(kv.Key) == true)
+                {
+                    continue;
+                }
                 this.AddGame(kv.Key, kv.Value);
             }
         }
@@ -215,6 +221,7 @@ namespace SAM.Picker
             }
 
             this.RefreshGames();
+            this.SaveOwnedGames();
             this._RefreshGamesButton.Enabled = true;
             this.DownloadNextLogo();
         }
@@ -552,9 +559,51 @@ namespace SAM.Picker
             this._Games.Add(id, info);
         }
 
+        private void LoadCachedOwnedGames()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "usergames.xml");
+                if (File.Exists(path) == false)
+                {
+                    return;
+                }
+
+                using var stream = File.OpenRead(path);
+                XPathDocument document = new(stream);
+                var navigator = document.CreateNavigator();
+                var nodes = navigator.Select("/games/game");
+                while (nodes.MoveNext() == true)
+                {
+                    string idText = nodes.Current.GetAttribute("id", "");
+                    if (uint.TryParse(idText, out var id) == false)
+                    {
+                        continue;
+                    }
+                    if (this._Games.ContainsKey(id) == true)
+                    {
+                        continue;
+                    }
+                    if (this.OwnsGame(id) == false)
+                    {
+                        continue;
+                    }
+                    GameInfo info = new(id, null);
+                    info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
+                    this._Games.Add(id, info);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+
         private void AddGames()
         {
             this._Games.Clear();
+            this.LoadCachedOwnedGames();
+            this.RefreshGames();
             this._RefreshGamesButton.Enabled = false;
             this._ListWorker.RunWorkerAsync();
         }
@@ -569,6 +618,33 @@ namespace SAM.Picker
             this._CallbackTimer.Enabled = false;
             this._SteamClient.RunCallbacks(false);
             this._CallbackTimer.Enabled = true;
+        }
+
+        private void SaveOwnedGames()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "usergames.xml");
+                string tempPath = path + ".tmp";
+
+                using (var writer = XmlWriter.Create(tempPath, new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 }))
+                {
+                    writer.WriteStartElement("games");
+                    foreach (var id in this._Games.Keys.OrderBy(k => k))
+                    {
+                        writer.WriteStartElement("game");
+                        writer.WriteAttributeString("id", id.ToString(CultureInfo.InvariantCulture));
+                        writer.WriteEndElement();
+                    }
+                    writer.WriteEndElement();
+                }
+
+                File.Move(tempPath, path, true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
         }
 
         private void OnActivateGame(object sender, EventArgs e)
