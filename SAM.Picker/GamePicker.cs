@@ -470,42 +470,60 @@ namespace SAM.Picker
             }
         }
 
+        private static bool TrySanitizeCandidate(string candidate, out string sanitized)
+        {
+            sanitized = Path.GetFileName(candidate);
+
+            if (candidate.Contains("..", StringComparison.Ordinal) ||
+                candidate.Contains(":", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Scheme) == false)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private string GetGameImageUrl(uint id)
         {
             string candidate;
 
             var currentLanguage = "";
 
-            if (_LanguageComboBox.Text.Length == 0 )
+            if (_LanguageComboBox.Text.Length == 0)
             {
                 currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
                 _LanguageComboBox.Text = currentLanguage;
             }
             else
             {
-                currentLanguage = _LanguageComboBox.Text;                
+                currentLanguage = _LanguageComboBox.Text;
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
 
-            if (string.IsNullOrEmpty(candidate) == false)
+            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out var safeCandidate))
             {
-                return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{candidate}");
+                return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
             }
 
             if (currentLanguage != "english")
             {
                 candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
-                if (string.IsNullOrEmpty(candidate) == false)
+                if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
                 {
-                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{candidate}");
+                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
                 }
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
-            if (string.IsNullOrEmpty(candidate) == false)
+            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
             {
-                return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{candidate}.jpg");
+                return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
             }
 
             return null;
