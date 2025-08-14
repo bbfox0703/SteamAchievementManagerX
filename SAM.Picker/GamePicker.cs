@@ -517,7 +517,6 @@ namespace SAM.Picker
         {
             var currentLanguage = this._CurrentLanguage;
             if (string.IsNullOrEmpty(currentLanguage))
-            {
                 currentLanguage = "english";
             }
 
