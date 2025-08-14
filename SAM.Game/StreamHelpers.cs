@@ -39,7 +39,10 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToInt32(data, 0);
         }
 
@@ -47,7 +50,10 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToUInt32(data, 0);
         }
 
@@ -55,7 +61,10 @@ namespace SAM.Game
         {
             var data = new byte[8];
             int read = stream.Read(data, 0, 8);
-            Debug.Assert(read == 8);
+            if (read != 8)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToUInt64(data, 0);
         }
 
@@ -63,7 +72,10 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToSingle(data, 0);
         }
 
@@ -84,7 +96,10 @@ namespace SAM.Game
                 }
 
                 int read = stream.Read(data, i, characterSize);
-                Debug.Assert(read == characterSize);
+                if (read != characterSize)
+                {
+                    throw new EndOfStreamException();
+                }
 
                 if (encoding.GetString(data, i, characterSize) == characterEnd)
                 {
