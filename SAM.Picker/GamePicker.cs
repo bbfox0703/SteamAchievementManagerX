@@ -474,8 +474,8 @@ namespace SAM.Picker
         {
             sanitized = Path.GetFileName(candidate);
 
-            if (candidate.Contains("..", StringComparison.Ordinal) ||
-                candidate.Contains(":", StringComparison.Ordinal))
+            if (candidate.IndexOf("..", StringComparison.Ordinal) >= 0 ||
+                candidate.IndexOf(':') >= 0)
             {
                 return false;
             }
