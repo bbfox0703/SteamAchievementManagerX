@@ -193,7 +193,7 @@ namespace SAM.Game
             return Path.Combine(this._IconCacheDirectory, fileName);
         }
 
-        private void AddAchievementIcon(Stats.AchievementInfo info, Image icon)
+        private void AddAchievementIcon(Stats.AchievementInfo info, Image? icon)
         {
             if (icon == null)
             {
@@ -222,7 +222,7 @@ namespace SAM.Game
             var info = this._IconQueue[0];
             this._IconQueue.RemoveAt(0);
 
-            Bitmap bitmap = null;
+            Bitmap? bitmap = null;
             try
             {
                 bitmap = await this.DownloadIconAsync(info);
