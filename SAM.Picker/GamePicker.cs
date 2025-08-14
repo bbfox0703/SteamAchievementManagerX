@@ -129,10 +129,11 @@ namespace SAM.Picker
                 uri => this.DownloadDataAsync(uri).GetAwaiter().GetResult(),
                 out usedLocal);
 
-            if (usedLocal == true)
-            {
-                e.Result = "Loaded bundled game list due to network failure.";
-            }
+            //Silent load from local file if network fails
+            //if (usedLocal == true)
+            //{
+            //    e.Result = "Loaded bundled game list due to network failure.";
+            //}
 
             List<KeyValuePair<uint, string>> pairs = new();
             using (MemoryStream stream = new(bytes, false))
