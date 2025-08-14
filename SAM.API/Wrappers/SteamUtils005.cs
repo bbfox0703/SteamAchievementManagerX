@@ -45,7 +45,11 @@ namespace SAM.API.Wrappers
         public string GetIPCountry()
         {
             var result = this.Call<IntPtr, NativeGetIPCountry>(this.Functions.GetIPCountry, this.ObjectAddress);
-            return NativeStrings.PointerToString(result);
+            if (result == IntPtr.Zero)
+            {
+                return null;
+            }
+            return NativeStrings.PointerToString(result, 16);
         }
         #endregion
 

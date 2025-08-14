@@ -201,7 +201,11 @@ namespace SAM.API.Wrappers
                     this.ObjectAddress,
                     nativeName.Handle,
                     nativeKey.Handle);
-                return NativeStrings.PointerToString(result);
+                if (result == IntPtr.Zero)
+                {
+                    return null;
+                }
+                return NativeStrings.PointerToString(result, 1024);
             }
         }
         #endregion
