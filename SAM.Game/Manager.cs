@@ -173,7 +173,17 @@ namespace SAM.Game
             {
                 return null;
             }
-            var fileName = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked") + ".png";
+
+            var id = info.Id;
+            var invalid = Path.GetInvalidFileNameChars();
+            if (id.IndexOfAny(invalid) >= 0 ||
+                id.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                id.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                id = Uri.EscapeDataString(id);
+            }
+
+            var fileName = id + "_" + (info.IsAchieved == true ? "achieved" : "locked") + ".png";
             return Path.Combine(this._IconCacheDirectory, fileName);
         }
 
