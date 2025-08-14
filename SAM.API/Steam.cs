@@ -141,36 +141,52 @@ namespace SAM.API
                 return false;
             }
 
-            Native.SetDllDirectory(path + ";" + Path.Combine(path, "bin"));
-
-            string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
-            string libraryPath = Path.Combine(path, library);
-            IntPtr module = Native.LoadLibraryEx(libraryPath, IntPtr.Zero, Native.LoadWithAlteredSearchPath);
-            if (module == IntPtr.Zero)
+            var binPath = Path.Combine(path, "bin");
+            if (!Native.SetDllDirectory(path))
             {
                 return false;
             }
 
-            _CallCreateInterface = GetExportFunction<NativeCreateInterface>(module, "CreateInterface");
-            if (_CallCreateInterface == null)
+            try
             {
-                return false;
-            }
+                if (!Native.SetDllDirectory(binPath))
+                {
+                    return false;
+                }
 
-            _CallSteamBGetCallback = GetExportFunction<NativeSteamGetCallback>(module, "Steam_BGetCallback");
-            if (_CallSteamBGetCallback == null)
+                string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
+                string libraryPath = Path.Combine(path, library);
+                IntPtr module = Native.LoadLibraryEx(libraryPath, IntPtr.Zero, Native.LoadWithAlteredSearchPath);
+                if (module == IntPtr.Zero)
+                {
+                    return false;
+                }
+
+                _CallCreateInterface = GetExportFunction<NativeCreateInterface>(module, "CreateInterface");
+                if (_CallCreateInterface == null)
+                {
+                    return false;
+                }
+
+                _CallSteamBGetCallback = GetExportFunction<NativeSteamGetCallback>(module, "Steam_BGetCallback");
+                if (_CallSteamBGetCallback == null)
+                {
+                    return false;
+                }
+
+                _CallSteamFreeLastCallback = GetExportFunction<NativeSteamFreeLastCallback>(module, "Steam_FreeLastCallback");
+                if (_CallSteamFreeLastCallback == null)
+                {
+                    return false;
+                }
+
+                _Handle = module;
+                return true;
+            }
+            finally
             {
-                return false;
+                Native.SetDllDirectory(string.Empty);
             }
-
-            _CallSteamFreeLastCallback = GetExportFunction<NativeSteamFreeLastCallback>(module, "Steam_FreeLastCallback");
-            if (_CallSteamFreeLastCallback == null)
-            {
-                return false;
-            }
-
-            _Handle = module;
-            return true;
         }
         public static void Unload()
         {
