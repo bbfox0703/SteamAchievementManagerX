@@ -126,7 +126,7 @@ namespace SAM.Picker
             bool usedLocal;
             byte[] bytes = GameList.Load(
                 AppDomain.CurrentDomain.BaseDirectory,
-                uri => this.DownloadDataAsync(uri).GetAwaiter().GetResult(),
+                this._HttpClient,
                 out usedLocal);
 
             //Silent load from local file if network fails
