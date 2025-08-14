@@ -1082,7 +1082,7 @@ namespace SAM.Game
 
         private void OnDisplayUncheckedOnly(object sender, EventArgs e)
         {
-            if ((sender as ToolStripButton).Checked == true)
+            if (sender is ToolStripButton button && button.Checked)
             {
                 this._DisplayLockedOnlyButton.Checked = false;
             }
@@ -1092,7 +1092,7 @@ namespace SAM.Game
 
         private void OnDisplayCheckedOnly(object sender, EventArgs e)
         {
-            if ((sender as ToolStripButton).Checked == true)
+            if (sender is ToolStripButton button && button.Checked)
             {
                 this._DisplayUnlockedOnlyButton.Checked = false;
             }
