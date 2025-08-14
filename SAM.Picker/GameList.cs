@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
-using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace SAM.Picker
 {
@@ -9,10 +9,6 @@ namespace SAM.Picker
     {
         // Maximum allowed size for the games.xml download.
         internal const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
-
-        // SHA256 checksum of the bundled games.xml file. Used to verify downloads.
-        private static readonly byte[] ExpectedHash = Convert.FromHexString(
-            "58e58775d292f2c01821c8a04c162c9b37d3e73ad937f067edddfd67a56e80cb");
 
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
@@ -50,14 +46,18 @@ namespace SAM.Picker
                     throw new HttpRequestException("Response too large or missing length");
                 }
 
-                using var stream = response.Content.ReadAsStream();
+                using var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
                 bytes = ReadWithLimit(stream, MaxDownloadBytes);
 
-                // verify checksum
-                var hash = SHA256.HashData(bytes);
-                if (CryptographicOperations.FixedTimeEquals(hash, ExpectedHash) == false)
+                // ensure the downloaded data is valid XML
+                try
                 {
-                    throw new InvalidDataException("Checksum mismatch");
+                    using var ms = new MemoryStream(bytes, false);
+                    _ = XDocument.Load(ms, LoadOptions.SetLineInfo);
+                }
+                catch (Exception)
+                {
+                    throw new InvalidDataException("Downloaded game list is invalid XML");
                 }
             }
             catch (Exception)

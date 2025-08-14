@@ -53,9 +53,7 @@ public class GameListTests
         string temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(temp);
         string local = Path.Combine(temp, "games.xml");
-        // use real bundled file to match expected checksum
-        string repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-        File.Copy(Path.Combine(repoRoot, "SAM.Picker", "games.xml"), local);
+        File.WriteAllText(local, "<games><game type='normal'>1</game></games>");
 
         using HttpClient client = new(new CorruptedHandler());
         byte[] bytes = GameList.Load(temp, client, out bool usedLocal);
