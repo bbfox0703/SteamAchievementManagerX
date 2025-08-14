@@ -21,7 +21,9 @@
  */
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 
 namespace SAM.Game
@@ -35,7 +37,29 @@ namespace SAM.Game
 
             if (args.Length == 0)
             {
-                Process.Start("SAM.Picker.exe");
+                string pickerExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SAM.Picker.exe");
+                if (File.Exists(pickerExe) == false)
+                {
+                    MessageBox.Show(
+                        "SAM.Picker.exe is missing.",
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                try
+                {
+                    Process.Start(pickerExe);
+                }
+                catch (Win32Exception)
+                {
+                    MessageBox.Show(
+                        "Failed to start SAM.Picker.exe.",
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
                 return;
             }
 
