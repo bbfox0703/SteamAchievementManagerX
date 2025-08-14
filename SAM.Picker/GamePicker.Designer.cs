@@ -213,7 +213,7 @@
             this._LanguageLabel.Name = "_LanguageLabel";
             this._LanguageLabel.Size = new System.Drawing.Size(140, 39);
             this._LanguageLabel.Text = "Language";
-            this._LanguageLabel.Visible = true;
+            this._LanguageLabel.Visible = false;
             // 
             // _LanguageComboBox
             // 
@@ -251,7 +251,7 @@
             "vietnamese"});
             this._LanguageComboBox.Name = "_LanguageComboBox";
             this._LanguageComboBox.Size = new System.Drawing.Size(160, 45);
-            this._LanguageComboBox.Visible = true;
+            this._LanguageComboBox.Visible = false;
             // 
             // _PickerStatusStrip
             // 
