@@ -40,4 +40,20 @@ public class StreamHelpersTests
         using var stream = new MemoryStream(Encoding.ASCII.GetBytes("abc"));
         Assert.Throws<EndOfStreamException>(() => stream.ReadStringAscii());
     }
+
+    [Fact]
+    public void ReadStringAscii_ThrowsOnExceededLimit()
+    {
+        var text = new string('a', 4097);
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes(text + '\0'));
+        Assert.Throws<InvalidDataException>(() => stream.ReadStringAscii());
+    }
+
+    [Fact]
+    public void ReadStringUnicode_ThrowsOnExceededLimit()
+    {
+        var text = new string('a', 4097);
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(text + '\0'));
+        Assert.Throws<InvalidDataException>(() => stream.ReadStringUnicode());
+    }
 }
