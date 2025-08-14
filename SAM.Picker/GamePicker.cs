@@ -639,7 +639,14 @@ namespace SAM.Picker
                     writer.WriteEndElement();
                 }
 
-                File.Move(tempPath, path, true);
+                if (File.Exists(path) == true)
+                {
+                    File.Replace(tempPath, path, null);
+                }
+                else
+                {
+                    File.Move(tempPath, path);
+                }
             }
             catch (Exception ex)
             {
