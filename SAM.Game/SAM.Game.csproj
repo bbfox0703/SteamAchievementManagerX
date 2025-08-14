@@ -25,6 +25,7 @@
     <LangVersion>9.0</LangVersion>
     <Platforms>x64</Platforms>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <OutputPath>..\bin\</OutputPath>
@@ -35,6 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="DoubleBufferedListView.cs">
