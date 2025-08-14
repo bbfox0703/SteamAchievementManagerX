@@ -167,9 +167,15 @@ namespace SAM.Game
             this.UpdateButtonText();
         }
 
-        private string GetAchievementCachePath(Stats.AchievementInfo info)
+        private string? GetAchievementCachePath(Stats.AchievementInfo info)
         {
             if (this._UseIconCache == false)
+            {
+                return null;
+            }
+
+            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
+            if (string.IsNullOrEmpty(icon))
             {
                 return null;
             }
@@ -234,7 +240,13 @@ namespace SAM.Game
 
         private async System.Threading.Tasks.Task<Bitmap?> DownloadIconAsync(Stats.AchievementInfo info)
         {
-            var uri = new Uri(_($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{this._GameId}/{(info.IsAchieved == true ? info.IconNormal : info.IconLocked)}"));
+            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
+            if (string.IsNullOrEmpty(icon))
+            {
+                return null;
+            }
+
+            var uri = new Uri(_($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{this._GameId}/{icon}"));
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
@@ -725,6 +737,13 @@ namespace SAM.Game
             if (imageIndex >= 0)
             {
                 info.ImageIndex = imageIndex;
+                return;
+            }
+
+            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
+            if (string.IsNullOrEmpty(icon))
+            {
+                info.ImageIndex = 0;
                 return;
             }
 
