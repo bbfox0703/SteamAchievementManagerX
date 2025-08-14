@@ -114,9 +114,44 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private async System.Threading.Tasks.Task<byte[]> DownloadDataAsync(Uri uri)
+        private const int MaxLogoBytes = 512 * 1024; // 512 KB
+        private const int MaxLogoDimension = 1024; // px
+
+        private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            return await this._HttpClient.GetByteArrayAsync(uri);
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var contentLength = response.Content.Headers.ContentLength;
+            if (contentLength == null || contentLength.Value > MaxLogoBytes)
+            {
+                throw new HttpRequestException("Response too large or missing length");
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var data = ReadWithLimit(stream, MaxLogoBytes);
+            return (data, contentType);
+        }
+
+        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
+        {
+            using MemoryStream memory = new();
+            byte[] buffer = new byte[81920];
+            int read;
+            int total = 0;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
@@ -305,11 +340,17 @@ namespace SAM.Picker
                     if (File.Exists(cacheFile) == true)
                     {
                         var bytes = File.ReadAllBytes(cacheFile);
-                        using var stream = new MemoryStream(bytes, false);
-                        using var image = Image.FromStream(stream, false, false);
-                        Bitmap bitmap = new(image);
-                        e.Result = new LogoInfo(info.Id, bitmap);
-                        return;
+                        if (bytes.Length <= MaxLogoBytes)
+                        {
+                            using var stream = new MemoryStream(bytes, false);
+                            using var image = Image.FromStream(stream, false, false);
+                            if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
+                            {
+                                Bitmap bitmap = new(image);
+                                e.Result = new LogoInfo(info.Id, bitmap);
+                                return;
+                            }
+                        }
                     }
                 }
                 catch (Exception)
@@ -320,17 +361,28 @@ namespace SAM.Picker
 
             try
             {
-                var data = this.DownloadDataAsync(new Uri(info.ImageUrl)).GetAwaiter().GetResult();
-                using (MemoryStream stream = new(data, false))
+                var (data, contentType) = this.DownloadDataAsync(new Uri(info.ImageUrl)).GetAwaiter().GetResult();
+                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
                 {
-                    Bitmap bitmap = new(stream);
+                    throw new InvalidDataException("Invalid content type");
+                }
+
+                using (MemoryStream stream = new(data, false))
+                using (var image = Image.FromStream(stream, false, false))
+                {
+                    if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                    {
+                        throw new InvalidDataException("Image dimensions too large");
+                    }
+
+                    Bitmap bitmap = new(image);
                     e.Result = new LogoInfo(info.Id, bitmap);
 
                     if (this._UseIconCache == true && cacheFile != null)
                     {
                         try
                         {
-                            bitmap.Save(cacheFile, ImageFormat.Png);
+                            File.WriteAllBytes(cacheFile, data);
                         }
                         catch (Exception)
                         {
@@ -339,8 +391,9 @@ namespace SAM.Picker
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(ex);
                 e.Result = new LogoInfo(info.Id, null);
             }
         }
