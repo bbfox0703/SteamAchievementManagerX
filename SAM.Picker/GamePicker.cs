@@ -532,9 +532,21 @@ namespace SAM.Picker
                 return;
             }
 
+            string gameExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SAM.Game.exe");
+            if (File.Exists(gameExe) == false)
+            {
+                MessageBox.Show(
+                    this,
+                    "SAM.Game.exe is missing.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
             try
             {
-                Process.Start("SAM.Game.exe", info.Id.ToString(CultureInfo.InvariantCulture));
+                Process.Start(gameExe, info.Id.ToString(CultureInfo.InvariantCulture));
             }
             catch (Win32Exception)
             {
