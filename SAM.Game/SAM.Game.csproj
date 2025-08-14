@@ -12,7 +12,7 @@
     <FileVersion>7.0.37.0</FileVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Blank.ico</ApplicationIcon>
+    <ApplicationIcon>SAM.Game.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
@@ -34,6 +34,9 @@
     <OutputPath>..\upload\</OutputPath>
     <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="SAM.Game.ico" />
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Net.Http" />
