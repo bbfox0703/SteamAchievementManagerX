@@ -23,6 +23,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.Win32;
 
 namespace SAM.API
@@ -147,6 +148,16 @@ namespace SAM.API
             }
 
             var binPath = Path.Combine(path, "bin");
+            string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
+            string libraryPath = Path.Combine(path, library);
+            if (File.Exists(libraryPath) == false)
+            {
+                libraryPath = Path.Combine(binPath, library);
+                if (File.Exists(libraryPath) == false)
+                {
+                    return false;
+                }
+            }
 
             IntPtr pathHandle = IntPtr.Zero;
             IntPtr binHandle = IntPtr.Zero;
@@ -164,9 +175,21 @@ namespace SAM.API
                     return false;
                 }
 
-                string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
+                try
+                {
+                    using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(libraryPath));
+                    if (certificate.Verify() == false)
+                    {
+                        return false;
+                    }
+                }
+                catch
+                {
+                    return false;
+                }
+
                 IntPtr module = Native.LoadLibraryEx(
-                    library,
+                    libraryPath,
                     IntPtr.Zero,
                     Native.LoadLibrarySearchDefaultDirs | Native.LoadLibrarySearchUserDirs);
                 if (module == IntPtr.Zero)
