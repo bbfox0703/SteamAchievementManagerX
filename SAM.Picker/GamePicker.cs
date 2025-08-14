@@ -56,6 +56,8 @@ namespace SAM.Picker
 
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
+        private volatile string _CurrentLanguage;
+
         public GamePicker(API.Client client)
         {
             this._Games = new();
@@ -90,6 +92,23 @@ namespace SAM.Picker
             this._HttpClient = new HttpClient();
             this.FormClosed += (_, _) => this._HttpClient.Dispose();
 
+            try
+            {
+                this._CurrentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
+                if (string.IsNullOrEmpty(this._CurrentLanguage))
+                {
+                    this._CurrentLanguage = "english";
+                }
+            }
+            catch (Exception)
+            {
+                this._CurrentLanguage = "english";
+            }
+
+            this._LanguageComboBox.Text = this._CurrentLanguage;
+            this._LanguageComboBox.SelectedIndexChanged += this.OnLanguageChanged;
+            this._LanguageComboBox.TextChanged += this.OnLanguageChanged;
+
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
 
@@ -108,7 +127,7 @@ namespace SAM.Picker
                 return;
             }
 
-            game.Name = this._SteamClient.SteamApps001.GetAppData(game.Id, "name");
+            game.Name = this.GetLocalizedName(game.Id);
 
             this.AddGameToLogoQueue(game);
             this.DownloadNextLogo();
@@ -117,6 +136,25 @@ namespace SAM.Picker
         private async System.Threading.Tasks.Task<byte[]> DownloadDataAsync(Uri uri)
         {
             return await this._HttpClient.GetByteArrayAsync(uri);
+        }
+
+        private void OnLanguageChanged(object sender, EventArgs e)
+        {
+            this._CurrentLanguage = this._LanguageComboBox.Text;
+            if (string.IsNullOrEmpty(this._CurrentLanguage))
+            {
+                this._CurrentLanguage = "english";
+            }
+
+            foreach (var info in this._Games.Values)
+            {
+                info.Name = this.GetLocalizedName(info.Id);
+                info.ImageIndex = 0;
+                this.AddGameToLogoQueue(info);
+            }
+
+            this.RefreshGames();
+            this.DownloadNextLogo();
         }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
@@ -410,16 +448,10 @@ namespace SAM.Picker
         {
             string candidate;
 
-            var currentLanguage = "";
-
-            if (_LanguageComboBox.Text.Length == 0 )
+            var currentLanguage = this._CurrentLanguage;
+            if (string.IsNullOrEmpty(currentLanguage))
             {
-                currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
-                _LanguageComboBox.Text = currentLanguage;
-            }
-            else
-            {
-                currentLanguage = _LanguageComboBox.Text;                
+                currentLanguage = "english";
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
@@ -481,6 +513,47 @@ namespace SAM.Picker
             return this._SteamClient.SteamApps008.IsSubscribedApp(id);
         }
 
+        private string GetLocalizedName(uint id)
+        {
+            var currentLanguage = this._CurrentLanguage;
+            if (string.IsNullOrEmpty(currentLanguage))
+            {
+                currentLanguage = "english";
+            }
+
+            string name = null;
+
+            try
+            {
+                name = this._SteamClient.SteamApps001.GetAppData(id, _($"name_{currentLanguage}"));
+                if (string.IsNullOrEmpty(name) == true && currentLanguage != "english")
+                {
+                    name = this._SteamClient.SteamApps001.GetAppData(id, "name_english");
+                }
+            }
+            catch (Exception)
+            {
+            }
+
+            if (string.IsNullOrEmpty(name) == true)
+            {
+                try
+                {
+                    name = this._SteamClient.SteamApps001.GetAppData(id, "name");
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            if (string.IsNullOrEmpty(name) == true)
+            {
+                name = id.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return name;
+        }
+
         private void AddGame(uint id, string type)
         {
             if (this._Games.ContainsKey(id) == true)
@@ -494,7 +567,7 @@ namespace SAM.Picker
             }
 
             GameInfo info = new(id, type);
-            info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
+            info.Name = this.GetLocalizedName(info.Id);
             this._Games.Add(id, info);
         }
 
