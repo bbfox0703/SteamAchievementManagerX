@@ -31,8 +31,8 @@ namespace SAM.Game.Stats
         public bool IsAchieved;
         public DateTime? UnlockTime;
         public int Permission;
-        public string IconNormal;
-        public string IconLocked;
+        public string? IconNormal;
+        public string? IconLocked;
         public string Name;
         public string Description;
         public ListViewItem Item;
