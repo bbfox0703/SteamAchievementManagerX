@@ -32,7 +32,7 @@ namespace SAM.Game
         private static readonly KeyValue _Invalid = new();
         public string Name = "<root>";
         public KeyValueType Type = KeyValueType.None;
-        public object Value;
+        public object? Value;
         public bool Valid;
 
         public List<KeyValue> Children = null;
@@ -85,24 +85,24 @@ namespace SAM.Game
                 case KeyValueType.String:
                 case KeyValueType.WideString:
                 {
-                    return int.TryParse((string)this.Value, out int value) == false
+                    return int.TryParse((string)this.Value!, out int value) == false
                         ? defaultValue
                         : value;
                 }
 
                 case KeyValueType.Int32:
                 {
-                    return (int)this.Value;
+                    return (int)this.Value!;
                 }
 
                 case KeyValueType.Float32:
                 {
-                    return (int)((float)this.Value);
+                    return (int)((float)this.Value!);
                 }
 
                 case KeyValueType.UInt64:
                 {
-                    return (int)((ulong)this.Value & 0xFFFFFFFF);
+                    return (int)((ulong)this.Value! & 0xFFFFFFFF);
                 }
             }
 
@@ -121,24 +121,24 @@ namespace SAM.Game
                 case KeyValueType.String:
                 case KeyValueType.WideString:
                 {
-                    return float.TryParse((string)this.Value, out float value) == false
+                    return float.TryParse((string)this.Value!, out float value) == false
                         ? defaultValue
                         : value;
                 }
 
                 case KeyValueType.Int32:
                 {
-                    return (int)this.Value;
+                    return (int)this.Value!;
                 }
 
                 case KeyValueType.Float32:
                 {
-                    return (float)this.Value;
+                    return (float)this.Value!;
                 }
 
                 case KeyValueType.UInt64:
                 {
-                    return (ulong)this.Value & 0xFFFFFFFF;
+                    return (ulong)this.Value! & 0xFFFFFFFF;
                 }
             }
 
@@ -157,24 +157,24 @@ namespace SAM.Game
                 case KeyValueType.String:
                 case KeyValueType.WideString:
                 {
-                    return int.TryParse((string)this.Value, out int value) == false
+                    return int.TryParse((string)this.Value!, out int value) == false
                         ? defaultValue
                         : value != 0;
                 }
 
                 case KeyValueType.Int32:
                 {
-                    return ((int)this.Value) != 0;
+                    return ((int)this.Value!) != 0;
                 }
 
                 case KeyValueType.Float32:
                 {
-                    return ((int)((float)this.Value)) != 0;
+                    return ((int)((float)this.Value!)) != 0;
                 }
 
                 case KeyValueType.UInt64:
                 {
-                    return ((ulong)this.Value) != 0;
+                    return ((ulong)this.Value!) != 0;
                 }
             }
 
