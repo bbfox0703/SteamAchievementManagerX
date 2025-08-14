@@ -35,7 +35,7 @@ namespace SAM.Game.Stats
         public string? IconLocked = string.Empty;
         public string Name = string.Empty;
         public string Description = string.Empty;
-        public ListViewItem Item;
+        public ListViewItem Item = null!;
 
         #region public int ImageIndex;
         public int ImageIndex
