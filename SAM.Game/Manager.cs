@@ -34,6 +34,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 using static SAM.Game.InvariantShorthand;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using APITypes = SAM.API.Types;
@@ -71,6 +72,35 @@ namespace SAM.Game
         private bool _moveRight = true;
         private POINT _lastMousePos;
 
+        private Color _BorderColor;
+
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_PAINT = 0x000F;
+        private const int HTCLIENT = 1;
+        private const int HTCAPTION = 2;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+        private const int WM_SETTINGCHANGE = 0x001A;
+        private const int WM_THEMECHANGED = 0x031A;
+        private const int WM_NCRBUTTONUP = 0x00A5;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int WM_SYSCOMMAND = 0x0112;
+        private const int TPM_LEFTBUTTON = 0x0000;
+        private const int TPM_RIGHTBUTTON = 0x0002;
+        private const int TPM_RETURNCMD = 0x0100;
+
+        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMSBT_MAINWINDOW = 2;
+        private const int DWMWCP_ROUND = 2;
+
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int X, int Y);
 
@@ -98,10 +128,52 @@ namespace SAM.Game
             public int X;
             public int Y;
         }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll")]
+        private static extern int TrackPopupMenuEx(IntPtr hmenu, int fuFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int WS_MINIMIZEBOX = 0x20000;
+                const int WS_MAXIMIZEBOX = 0x10000;
+                const int WS_SYSMENU = 0x80000;
+                const int WS_THICKFRAME = 0x40000;
+                const int CS_DBLCLKS = 0x8;
+                var cp = base.CreateParams;
+                cp.Style |= WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_THICKFRAME;
+                cp.ClassStyle |= CS_DBLCLKS;
+                return cp;
+            }
+        }
         // *****************************************************************
         public Manager(long gameId, API.Client client)
         {
             this.InitializeComponent();
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            this._MainToolStrip.MouseDown += this.OnDragWindow;
+            this._AchievementsToolStrip.MouseDown += this.OnDragWindow;
+            this._MainStatusStrip.MouseDown += this.OnDragWindow;
 
             this._MainTabControl.SelectedTab = this._AchievementsTabPage;
             //this.statisticsList.Enabled = this.checkBox1.Checked;
@@ -137,7 +209,12 @@ namespace SAM.Game
             {
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            this.FormClosed += (_, _) => this._HttpClient.Dispose();
+            this.FormClosed += (_, _) =>
+            {
+                this._HttpClient.Dispose();
+                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
+            };
+            SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
 
             this._IconCacheDirectory = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
@@ -170,6 +247,8 @@ namespace SAM.Game
 
             this.RefreshStats();
             this.UpdateButtonText();
+
+            this.UpdateColors();
         }
 
         private string? GetAchievementCachePath(Stats.AchievementInfo info)
@@ -1395,6 +1474,203 @@ namespace SAM.Game
                 _AchievementListView.ResumeLayout();
                 _AchievementListView.EndUpdate();
             }
+        }
+
+        private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (this.IsHandleCreated)
+            {
+                this.BeginInvoke(new MethodInvoker(() =>
+                {
+                    this.UpdateColors();
+                    this.TryApplyMica();
+                }));
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            this.TryApplyMica();
+            this.ApplyRoundedCorners();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            this.ApplyRoundedCorners();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_NCHITTEST)
+            {
+                base.WndProc(ref m);
+                if ((int)m.Result == HTCLIENT)
+                {
+                    int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                    int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                    Point pt = this.PointToClient(new Point(x, y));
+                    const int grip = 8;
+                    bool top = pt.Y < grip;
+                    bool left = pt.X < grip;
+                    bool right = pt.X >= this.ClientSize.Width - grip;
+                    bool bottom = pt.Y >= this.ClientSize.Height - grip;
+
+                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HTTOP;
+                    else if (left) m.Result = (IntPtr)HTLEFT;
+                    else if (right) m.Result = (IntPtr)HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    else
+                    {
+                        Control child = this.GetChildAtPoint(pt);
+                        if (child == null)
+                        {
+                            m.Result = (IntPtr)HTCAPTION;
+                        }
+                    }
+                }
+                return;
+            }
+            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            {
+                int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                this.ShowSystemMenu(new Point(x, y));
+                return;
+            }
+
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_PAINT)
+            {
+                using var g = Graphics.FromHwnd(this.Handle);
+                using var pen = new Pen(this._BorderColor);
+                g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
+            }
+            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            {
+                this.UpdateColors();
+                this.TryApplyMica();
+            }
+        }
+
+        private void OnDragWindow(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if ((ReferenceEquals(sender, this._MainToolStrip) && this._MainToolStrip.GetItemAt(e.Location) != null) ||
+                    (ReferenceEquals(sender, this._AchievementsToolStrip) && this._AchievementsToolStrip.GetItemAt(e.Location) != null))
+                {
+                    return;
+                }
+                ReleaseCapture();
+                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                Point screen = ((Control)sender!).PointToScreen(e.Location);
+                this.ShowSystemMenu(screen);
+            }
+        }
+
+        private void ShowSystemMenu(Point screenPoint)
+        {
+            IntPtr hMenu = GetSystemMenu(this.Handle, false);
+            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            if (command != 0)
+            {
+                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+            }
+        }
+
+        private void OnCloseButtonClick(object? sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void TryApplyMica()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
+            {
+                return;
+            }
+
+            int backdrop = DWMSBT_MAINWINDOW;
+            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+
+            int dark = this.IsLightTheme() ? 0 : 1;
+            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+        }
+
+        private void ApplyRoundedCorners()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
+                int pref = DWMWCP_ROUND;
+                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+            }
+            else
+            {
+                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
+                this.Region = Region.FromHrgn(rgn);
+                DeleteObject(rgn);
+            }
+        }
+
+        private bool IsLightTheme()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+                object value = key?.GetValue("AppsUseLightTheme");
+                if (value is int i)
+                {
+                    return i != 0;
+                }
+            }
+            catch
+            {
+            }
+            return true;
+        }
+
+        private void UpdateColors()
+        {
+            bool light = this.IsLightTheme();
+            if (light)
+            {
+                this._BorderColor = Color.FromArgb(200, 200, 200);
+                this.BackColor = Color.White;
+                this.ForeColor = Color.Black;
+            }
+            else
+            {
+                this._BorderColor = Color.FromArgb(50, 50, 50);
+                this.BackColor = Color.FromArgb(32, 32, 32);
+                this.ForeColor = Color.White;
+            }
+
+            this._MainToolStrip.BackColor = this.BackColor;
+            this._MainToolStrip.ForeColor = this.ForeColor;
+            this._CloseButton.BackColor = this.BackColor;
+            this._CloseButton.ForeColor = this.ForeColor;
+            this._MainStatusStrip.BackColor = this.BackColor;
+            this._MainStatusStrip.ForeColor = this.ForeColor;
+            this._AchievementsToolStrip.BackColor = this.BackColor;
+            this._AchievementsToolStrip.ForeColor = this.ForeColor;
+            this._AchievementListView.BackColor = this.BackColor;
+            this._AchievementListView.ForeColor = this.ForeColor;
+            this._StatisticsDataGridView.BackgroundColor = this.BackColor;
+            this._StatisticsDataGridView.ForeColor = this.ForeColor;
+            this._MainTabControl.BackColor = this.BackColor;
+            this._MainTabControl.ForeColor = this.ForeColor;
+
+            this.Invalidate();
         }
         protected override void Dispose(bool disposing)
         {

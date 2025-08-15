@@ -26,6 +26,7 @@
             this._TimeNowLabel = new System.Windows.Forms.ToolStripLabel();
             this._TimerLabel = new System.Windows.Forms.ToolStripLabel();
             this._autoMouseMoveButton = new System.Windows.Forms.ToolStripButton();
+            this._CloseButton = new System.Windows.Forms.ToolStripButton();
             this._AchievementImageList = new System.Windows.Forms.ImageList(this.components);
             this._MainStatusStrip = new System.Windows.Forms.StatusStrip();
             this._CountryStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -92,7 +93,8 @@
             this._ResetButton,
             this._TimeNowLabel,
             this._TimerLabel,
-            this._autoMouseMoveButton});
+            this._autoMouseMoveButton,
+            this._CloseButton});
             this._MainToolStrip.Location = new System.Drawing.Point(0, 0);
             this._MainToolStrip.Name = "_MainToolStrip";
             this._MainToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
@@ -155,7 +157,17 @@
             this._autoMouseMoveButton.Text = "Start Auto Mouse Move";
             this._autoMouseMoveButton.ToolTipText = "Auto mouse movement/every 60 seconds when program in foreground";
             this._autoMouseMoveButton.Click += new System.EventHandler(this._autoMouseMoveButton_Click);
-            // 
+            //
+            // _CloseButton
+            //
+            this._CloseButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this._CloseButton.AutoSize = false;
+            this._CloseButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._CloseButton.Name = "_CloseButton";
+            this._CloseButton.Size = new System.Drawing.Size(45, 39);
+            this._CloseButton.Text = "X";
+            this._CloseButton.Click += new System.EventHandler(this.OnCloseButtonClick);
+            //
             // _AchievementImageList
             // 
             this._AchievementImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth24Bit;
@@ -597,5 +609,6 @@
         private System.Windows.Forms.ToolStripLabel _TimerLabel;
         private System.Windows.Forms.Timer _idleTimer;
         private System.Windows.Forms.ToolStripButton _autoMouseMoveButton;
+        private System.Windows.Forms.ToolStripButton _CloseButton;
     }
 }
