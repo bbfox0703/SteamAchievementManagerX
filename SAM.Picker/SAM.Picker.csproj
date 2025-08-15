@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyTitle>Steam Achievement Manager Picker</AssemblyTitle>
     <Company>Gibbed</Company>
@@ -31,8 +31,7 @@
     <Content Include="SAM.Picker.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ModernWpf" Version="0.10.6" />
-    <PackageReference Include="ModernWpf.Controls" Version="0.10.6" />
+      <PackageReference Include="ModernWpfUI" Version="0.9.6" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />
