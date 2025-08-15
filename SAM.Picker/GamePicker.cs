@@ -119,26 +119,41 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private const int MaxLogoBytes = 512 * 1024; // 512 KB
+        private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
         private const int MaxLogoDimension = 1024; // px
 
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
+            HttpResponseMessage response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
 
-            var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > MaxLogoBytes)
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound &&
+                uri.Host.Equals("shared.cloudflare.steamstatic.com", StringComparison.OrdinalIgnoreCase))
             {
-                throw new HttpRequestException("Response too large or missing length");
+                response.Dispose();
+                var fallbackUri = new UriBuilder(uri) { Host = "shared.steamstatic.com" }.Uri;
+                response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
             }
 
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            using (response)
+            {
+                response.EnsureSuccessStatusCode();
 
-            using var stream = await response.Content.ReadAsStreamAsync();
-            var data = ReadWithLimit(stream, MaxLogoBytes);
-            return (data, contentType);
+                var contentLength = response.Content.Headers.ContentLength;
+                if (contentLength == null)
+                {
+                    Debug.WriteLine(_($"Missing Content-Length header for {response.RequestMessage!.RequestUri}"));
+                }
+                else if (contentLength.Value > MaxLogoBytes)
+                {
+                    throw new HttpRequestException("Response too large");
+                }
+
+                var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+
+                using var stream = await response.Content.ReadAsStreamAsync();
+                var data = ReadWithLimit(stream, MaxLogoBytes);
+                return (data, contentType);
+            }
         }
 
         private static byte[] ReadWithLimit(Stream stream, int maxBytes)
