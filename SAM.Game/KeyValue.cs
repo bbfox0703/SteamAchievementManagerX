@@ -70,7 +70,7 @@ namespace SAM.Game
                 return defaultValue;
             }
 
-            return this.Value.ToString();
+            return this.Value!.ToString()!;
         }
 
         public int AsInteger(int defaultValue)
