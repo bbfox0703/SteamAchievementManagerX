@@ -572,7 +572,7 @@ namespace SAM.Picker
                 candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
                 if (string.IsNullOrEmpty(candidate) == false)
                 {
-                    if (TrySanitizeCandidate(candidate, out safeCandidate))
+                    if (TrySanitizeCandidate(candidate, out var safeCandidate))
                     {
                         return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
                     }
@@ -590,7 +590,7 @@ namespace SAM.Picker
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
             if (string.IsNullOrEmpty(candidate) == false)
             {
-                if (TrySanitizeCandidate(candidate, out safeCandidate))
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
                 {
                     return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
                 }
@@ -607,7 +607,7 @@ namespace SAM.Picker
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "library_600x900");
             if (string.IsNullOrEmpty(candidate) == false)
             {
-                if (TrySanitizeCandidate(candidate, out safeCandidate))
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
                 {
                     return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
                 }
@@ -624,7 +624,7 @@ namespace SAM.Picker
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "header_image");
             if (string.IsNullOrEmpty(candidate) == false)
             {
-                if (TrySanitizeCandidate(candidate, out safeCandidate))
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
                 {
                     return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
                 }
