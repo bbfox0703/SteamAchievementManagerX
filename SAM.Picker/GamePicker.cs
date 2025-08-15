@@ -89,11 +89,19 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
-            this._HttpClient = new HttpClient
+            var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+            };
+            this._HttpClient = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            this.FormClosed += (_, _) => this._HttpClient.Dispose();
+            this.FormClosed += (_, _) =>
+            {
+                handler.Dispose();
+                this._HttpClient.Dispose();
+            };
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
@@ -127,6 +135,12 @@ namespace SAM.Picker
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
+
+            var finalUri = response.RequestMessage?.RequestUri;
+            if (finalUri == null || ImageUrlValidator.TryCreateUri(finalUri.ToString(), out _) == false)
+            {
+                throw new HttpRequestException("Response redirected to unapproved host");
+            }
 
             var contentLength = response.Content.Headers.ContentLength;
             if (contentLength == null || contentLength.Value > MaxLogoBytes)
