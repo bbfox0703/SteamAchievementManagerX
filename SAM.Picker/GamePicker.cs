@@ -178,7 +178,13 @@ namespace SAM.Picker
             List<KeyValuePair<uint, string>> pairs = new();
             using (MemoryStream stream = new(bytes, false))
             {
-                XPathDocument document = new(stream);
+                XmlReaderSettings settings = new()
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                };
+                using var reader = XmlReader.Create(stream, settings);
+                var document = new XPathDocument(reader);
                 var navigator = document.CreateNavigator();
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
@@ -629,7 +635,13 @@ namespace SAM.Picker
                 }
 
                 using var stream = File.OpenRead(path);
-                XPathDocument document = new(stream);
+                XmlReaderSettings settings = new()
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                };
+                using var reader = XmlReader.Create(stream, settings);
+                var document = new XPathDocument(reader);
                 var navigator = document.CreateNavigator();
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
