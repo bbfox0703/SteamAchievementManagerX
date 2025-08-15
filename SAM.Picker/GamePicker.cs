@@ -149,7 +149,7 @@ namespace SAM.Picker
             this.ApplyRoundedCorners();
         }
 
-        private void OnUserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+        private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
             this.UpdateColors();
             this.TryApplyMica();
@@ -196,10 +196,10 @@ namespace SAM.Picker
             }
 
             int backdrop = DWMSBT_MAINWINDOW;
-            _ = DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
 
             int dark = this.IsLightTheme() ? 0 : 1;
-            _ = DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
         }
 
         private void ApplyRoundedCorners()
@@ -207,7 +207,7 @@ namespace SAM.Picker
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
             {
                 int pref = DWMWCP_ROUND;
-                _ = DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
             }
             else
             {
@@ -222,7 +222,7 @@ namespace SAM.Picker
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                object? value = key?.GetValue("AppsUseLightTheme");
+                object value = key?.GetValue("AppsUseLightTheme");
                 if (value is int i)
                 {
                     return i != 0;
