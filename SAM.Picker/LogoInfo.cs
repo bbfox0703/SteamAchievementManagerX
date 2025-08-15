@@ -20,19 +20,19 @@
  *    distribution.
  */
 
-using System.Drawing;
+using System.Windows.Media;
 
 namespace SAM.Picker
 {
     internal class LogoInfo
     {
         public readonly uint Id;
-        public readonly Bitmap Bitmap;
+        public readonly ImageSource Image;
 
-        public LogoInfo(uint id, Bitmap bitmap)
+        public LogoInfo(uint id, ImageSource image)
         {
             this.Id = id;
-            this.Bitmap = bitmap;
+            this.Image = image;
         }
     }
 }
