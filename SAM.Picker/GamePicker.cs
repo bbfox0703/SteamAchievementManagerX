@@ -79,6 +79,7 @@ namespace SAM.Picker
         private const int WM_NCRBUTTONUP = 0x00A5;
         private const int WM_SYSCOMMAND = 0x0112;
         private const int TPM_LEFTBUTTON = 0x0000;
+        private const int TPM_RIGHTBUTTON = 0x0002;
         private const int TPM_RETURNCMD = 0x0100;
 
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
@@ -104,6 +105,22 @@ namespace SAM.Picker
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int WS_MINIMIZEBOX = 0x20000;
+                const int WS_MAXIMIZEBOX = 0x10000;
+                const int WS_SYSMENU = 0x80000;
+                const int WS_THICKFRAME = 0x40000;
+                const int CS_DBLCLKS = 0x8;
+                var cp = base.CreateParams;
+                cp.Style |= WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_THICKFRAME;
+                cp.ClassStyle |= CS_DBLCLKS;
+                return cp;
+            }
+        }
 
         public GamePicker(API.Client client)
         {
@@ -172,8 +189,14 @@ namespace SAM.Picker
 
         private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
-            this.UpdateColors();
-            this.TryApplyMica();
+            if (this.IsHandleCreated)
+            {
+                this.BeginInvoke(new MethodInvoker(() =>
+                {
+                    this.UpdateColors();
+                    this.TryApplyMica();
+                }));
+            }
         }
 
         protected override void WndProc(ref Message m)
@@ -203,7 +226,7 @@ namespace SAM.Picker
                     else
                     {
                         Control child = this.GetChildAtPoint(pt);
-                        if (child == null || child == this._PickerToolStrip)
+                        if (child == null || child == this._PickerToolStrip || child == this._PickerStatusStrip)
                         {
                             m.Result = (IntPtr)HTCAPTION;
                         }
@@ -237,7 +260,7 @@ namespace SAM.Picker
         private void ShowSystemMenu(Point screenPoint)
         {
             IntPtr hMenu = GetSystemMenu(this.Handle, false);
-            int command = TrackPopupMenuEx(hMenu, TPM_LEFTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
             if (command != 0)
             {
                 SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
@@ -391,7 +414,10 @@ namespace SAM.Picker
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
-            this._PickerStatusLabel.Text = "Downloading game list...";
+            this.BeginInvoke(new MethodInvoker(() =>
+            {
+                this._PickerStatusLabel.Text = "Downloading game list...";
+            }));
 
             bool usedLocal;
             byte[] bytes = GameList.Load(
@@ -428,7 +454,10 @@ namespace SAM.Picker
                 }
             }
 
-            this._PickerStatusLabel.Text = "Checking game ownership...";
+            this.BeginInvoke(new MethodInvoker(() =>
+            {
+                this._PickerStatusLabel.Text = "Checking game ownership...";
+            }));
             foreach (var kv in pairs)
             {
                 if (this._Games.ContainsKey(kv.Key) == true)
