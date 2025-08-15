@@ -22,25 +22,10 @@
 
 namespace SAM.Game.Stats
 {
-    internal abstract class StatInfo
+    public abstract class StatDefinition
     {
-        public abstract bool IsModified { get; }
-        public string Id { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
-        public abstract object Value { get; set; }
-        public bool IsIncrementOnly { get; set; }
-        public int Permission { get; set; }
-
-        public string Extra
-        {
-            get
-            {
-                var flags = StatFlags.None;
-                flags |= this.IsIncrementOnly == false ? 0 : StatFlags.IncrementOnly;
-                flags |= ((this.Permission & 2) != 0) == false ? 0 : StatFlags.Protected;
-                flags |= ((this.Permission & ~2) != 0) == false ? 0 : StatFlags.UnknownPermission;
-                return flags.ToString();
-            }
-        }
+        public string Id = string.Empty;
+        public string DisplayName = string.Empty;
+        public int Permission;
     }
 }

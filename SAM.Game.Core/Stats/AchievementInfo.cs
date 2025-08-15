@@ -21,28 +21,18 @@
  */
 
 using System;
-using System.Windows.Forms;
-
 namespace SAM.Game.Stats
 {
-    internal class AchievementInfo
+    public class AchievementInfo
     {
-        public string Id = string.Empty;
-        public bool IsAchieved;
-        public DateTime? UnlockTime;
-        public int Permission;
-        public string? IconNormal = string.Empty;
-        public string? IconLocked = string.Empty;
-        public string Name = string.Empty;
-        public string Description = string.Empty;
-        public ListViewItem Item = null!;
-
-        #region public int ImageIndex;
-        public int ImageIndex
-        {
-            get => this.Item.ImageIndex;
-            set => this.Item.ImageIndex = value;
-        }
-        #endregion
+        public string Id { get; set; } = string.Empty;
+        public bool IsAchieved { get; set; }
+        public DateTime? UnlockTime { get; set; }
+        public int Permission { get; set; }
+        public string? IconNormal { get; set; } = string.Empty;
+        public string? IconLocked { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int ImageIndex { get; set; }
     }
 }

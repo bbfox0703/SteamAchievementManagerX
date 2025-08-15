@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SAM.Game.Cross.Views.MainWindow"
+        Title="Steam Achievement Manager" Width="800" Height="600">
+    <TabControl>
+        <TabItem Header="Achievements">
+            <ListBox Items="{Binding Achievements}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox IsChecked="{Binding IsAchieved}" Margin="4"/>
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </TabItem>
+        <TabItem Header="Statistics">
+            <DataGrid Items="{Binding Stats}" AutoGenerateColumns="True"/>
+        </TabItem>
+    </TabControl>
+</Window>

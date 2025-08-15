@@ -20,28 +20,25 @@
  *    distribution.
  */
 
+using System;
+
 namespace SAM.Game.Stats
 {
-    internal class FloatStatInfo : StatInfo
+    [Serializable]
+    public class StatIsProtectedException : Exception
     {
-        public float OriginalValue;
-        public float FloatValue;
-
-        public override object Value
+        public StatIsProtectedException()
         {
-            get => this.FloatValue;
-            set
-            {
-                var f = float.Parse((string)value, System.Globalization.CultureInfo.CurrentCulture);
-                if ((this.Permission & 2) != 0 &&
-                    this.FloatValue.Equals(f) == false)
-                {
-                    throw new StatIsProtectedException();
-                }
-                this.FloatValue = f;
-            }
         }
 
-        public override bool IsModified => this.FloatValue.Equals(this.OriginalValue) == false;
+        public StatIsProtectedException(string message)
+            : base(message)
+        {
+        }
+
+        public StatIsProtectedException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 }

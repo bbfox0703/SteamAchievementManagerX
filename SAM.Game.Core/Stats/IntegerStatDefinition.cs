@@ -22,19 +22,13 @@
 
 namespace SAM.Game.Stats
 {
-    internal class AchievementDefinition
+    public class IntegerStatDefinition : StatDefinition
     {
-        public string Id = string.Empty;
-        public string Name = string.Empty;
-        public string Description = string.Empty;
-        public string IconNormal = string.Empty;
-        public string IconLocked = string.Empty ;
-        public bool IsHidden;
-        public int Permission;
-
-        public override string ToString()
-        {
-            return $"{this.Name ?? this.Id ?? base.ToString()}: {this.Permission}";
-        }
+        public int MinValue;
+        public int MaxValue;
+        public int MaxChange;
+        public bool IncrementOnly;
+        public bool SetByTrustedGameServer;
+        public int DefaultValue;
     }
 }

@@ -57,5 +57,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />
+    <ProjectReference Include="..\SAM.Game.Core\SAM.Game.Core.csproj" />
   </ItemGroup>
 </Project>

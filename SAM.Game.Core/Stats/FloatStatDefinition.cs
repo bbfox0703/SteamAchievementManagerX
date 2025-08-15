@@ -22,10 +22,12 @@
 
 namespace SAM.Game.Stats
 {
-    internal abstract class StatDefinition
+    public class FloatStatDefinition : StatDefinition
     {
-        public string Id = string.Empty;
-        public string DisplayName = string.Empty;
-        public int Permission;
+        public float MinValue;
+        public float MaxValue;
+        public float MaxChange;
+        public bool IncrementOnly;
+        public float DefaultValue;
     }
 }

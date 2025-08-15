@@ -20,25 +20,21 @@
  *    distribution.
  */
 
-using System;
-
 namespace SAM.Game.Stats
 {
-    [Serializable]
-    internal class StatIsProtectedException : Exception
+    public class AchievementDefinition
     {
-        public StatIsProtectedException()
-        {
-        }
+        public string Id = string.Empty;
+        public string Name = string.Empty;
+        public string Description = string.Empty;
+        public string IconNormal = string.Empty;
+        public string IconLocked = string.Empty ;
+        public bool IsHidden;
+        public int Permission;
 
-        public StatIsProtectedException(string message)
-            : base(message)
+        public override string ToString()
         {
-        }
-
-        public StatIsProtectedException(string message, Exception innerException)
-            : base(message, innerException)
-        {
+            return $"{this.Name ?? this.Id ?? base.ToString()}: {this.Permission}";
         }
     }
 }

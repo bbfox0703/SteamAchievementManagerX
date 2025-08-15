@@ -20,16 +20,27 @@
  *    distribution.
  */
 
-using System;
-
 namespace SAM.Game.Stats
 {
-    [Flags]
-    internal enum StatFlags
+    public abstract class StatInfo
     {
-        None = 0,
-        IncrementOnly = 1 << 0,
-        Protected = 1 << 1,
-        UnknownPermission = 1 << 2,
+        public abstract bool IsModified { get; }
+        public string Id { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public abstract object Value { get; set; }
+        public bool IsIncrementOnly { get; set; }
+        public int Permission { get; set; }
+
+        public string Extra
+        {
+            get
+            {
+                var flags = StatFlags.None;
+                flags |= this.IsIncrementOnly == false ? 0 : StatFlags.IncrementOnly;
+                flags |= ((this.Permission & 2) != 0) == false ? 0 : StatFlags.Protected;
+                flags |= ((this.Permission & ~2) != 0) == false ? 0 : StatFlags.UnknownPermission;
+                return flags.ToString();
+            }
+        }
     }
 }
