@@ -77,8 +77,7 @@ namespace SAM.Picker
                     return;
                 }
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
+                ApplicationConfiguration.Initialize();
                 Application.Run(new GamePicker(client));
             }
         }
