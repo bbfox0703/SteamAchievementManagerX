@@ -1,4 +1,3 @@
-using ModernWpf.Controls;
 using System.Windows;
 
 namespace SAM.Game
@@ -12,16 +11,14 @@ namespace SAM.Game
 
         private void OnStore(object sender, RoutedEventArgs e)
         {
-            StatusBar.Title = "Store";
-            StatusBar.Message = "Store clicked";
-            StatusBar.IsOpen = true;
+            StatusText.Text = "Store clicked";
+            StatusText.Visibility = Visibility.Visible;
         }
 
         private void OnRefresh(object sender, RoutedEventArgs e)
         {
-            StatusBar.Title = "Refresh";
-            StatusBar.Message = "Data refreshed";
-            StatusBar.IsOpen = true;
+            StatusText.Text = "Data refreshed";
+            StatusText.Visibility = Visibility.Visible;
         }
     }
 }

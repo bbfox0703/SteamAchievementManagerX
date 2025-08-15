@@ -1,4 +1,3 @@
-using ModernWpf.Controls;
 using System.Windows;
 
 namespace SAM.Picker
@@ -12,9 +11,8 @@ namespace SAM.Picker
 
         private void OnRefresh(object sender, RoutedEventArgs e)
         {
-            StatusBar.Title = "Refresh";
-            StatusBar.Message = "Games refreshed";
-            StatusBar.IsOpen = true;
+            StatusText.Text = "Games refreshed";
+            StatusText.Visibility = Visibility.Visible;
         }
     }
 }

@@ -12,7 +12,7 @@
                 <ui:AppBarButton Icon="Refresh" Label="Refresh" Click="OnRefresh" />
                 <ui:AppBarButton Icon="Shop" Label="Store" Click="OnStore" />
             </ui:CommandBar>
-            <ui:InfoBar x:Name="StatusBar" IsOpen="False" />
+            <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="4" />
         </StackPanel>
     </ui:NavigationView>
 </Window>

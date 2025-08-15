@@ -11,7 +11,7 @@
             <ui:CommandBar>
                 <ui:AppBarButton Icon="Refresh" Label="Refresh" Click="OnRefresh" />
             </ui:CommandBar>
-            <ui:InfoBar x:Name="StatusBar" IsOpen="False" />
+            <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="4" />
         </StackPanel>
     </ui:NavigationView>
 </Window>
