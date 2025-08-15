@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using SAM.Game.Stats;
 using SAM.API.Types;
 #if !WINDOWS
@@ -109,65 +111,126 @@ public class GameService
     public IReadOnlyList<StatInfo> GetStats()
     {
         var list = new List<StatInfo>();
-#if WINDOWS
-        uint count = _client.SteamUserStats.GetNumStats();
-        for (uint i = 0; i < count; i++)
+
+        string path;
+        try
         {
-            var id = _client.SteamUserStats.GetStatName(i);
+            string fileName = $"UserGameStatsSchema_{_gameId}.bin";
+            path = API.Steam.GetInstallPath();
+            path = Path.Combine(path, "appcache", "stats", fileName);
+            if (!File.Exists(path))
+            {
+                return list;
+            }
+        }
+        catch (Exception)
+        {
+            return list;
+        }
+
+        var kv = KeyValue.LoadAsBinary(path);
+        if (kv == null)
+        {
+            return list;
+        }
+
+        var stats = kv[_gameId.ToString(CultureInfo.InvariantCulture)]["stats"];
+        if (!stats.Valid || stats.Children == null)
+        {
+            return list;
+        }
+
+        foreach (var stat in stats.Children)
+        {
+            if (!stat.Valid)
+            {
+                continue;
+            }
+
+            var id = stat["name"].AsString("");
             if (string.IsNullOrEmpty(id))
             {
                 continue;
             }
 
-            var type = _client.SteamUserStats.GetStatType(id);
+            var rawType = stat["type_int"].Valid ? stat["type_int"].AsInteger(0) : stat["type"].AsInteger(0);
+            var type = (UserStatType)rawType;
+            var incrementOnly = stat["incrementonly"].AsBoolean(false);
+            var permission = stat["permission"].AsInteger(0);
+
+#if WINDOWS
             switch (type)
             {
                 case UserStatType.Integer:
-                    if (_client.SteamUserStats.GetStat(id, out int intValue))
+                    if (_client.SteamUserStats.GetStatValue(id, out int intValue))
                     {
-                        var info = new IntStatInfo { Id = id, DisplayName = id, IntValue = intValue, OriginalValue = intValue };
+                        var info = new IntStatInfo
+                        {
+                            Id = id,
+                            DisplayName = id,
+                            IntValue = intValue,
+                            OriginalValue = intValue,
+                            IsIncrementOnly = incrementOnly,
+                            Permission = permission,
+                        };
                         list.Add(info);
                     }
                     break;
                 case UserStatType.Float:
-                    if (_client.SteamUserStats.GetStat(id, out float floatValue))
+                case UserStatType.AverageRate:
+                    if (_client.SteamUserStats.GetStatValue(id, out float floatValue))
                     {
-                        var info = new FloatStatInfo { Id = id, DisplayName = id, FloatValue = floatValue, OriginalValue = floatValue };
+                        var info = new FloatStatInfo
+                        {
+                            Id = id,
+                            DisplayName = id,
+                            FloatValue = floatValue,
+                            OriginalValue = floatValue,
+                            IsIncrementOnly = incrementOnly,
+                            Permission = permission,
+                        };
                         list.Add(info);
                     }
                     break;
             }
-        }
 #else
-        uint count = SteamUserStats.GetNumStats();
-        for (uint i = 0; i < count; i++)
-        {
-            var id = SteamUserStats.GetStatName(i);
-            if (string.IsNullOrEmpty(id))
-            {
-                continue;
-            }
-
-            var type = (UserStatType)SteamUserStats.GetStatType(id);
             switch (type)
             {
                 case UserStatType.Integer:
                     if (SteamUserStats.GetStat(id, out int intValue))
                     {
-                        var info = new IntStatInfo { Id = id, DisplayName = id, IntValue = intValue, OriginalValue = intValue };
+                        var info = new IntStatInfo
+                        {
+                            Id = id,
+                            DisplayName = id,
+                            IntValue = intValue,
+                            OriginalValue = intValue,
+                            IsIncrementOnly = incrementOnly,
+                            Permission = permission,
+                        };
                         list.Add(info);
                     }
                     break;
                 case UserStatType.Float:
+                case UserStatType.AverageRate:
                     if (SteamUserStats.GetStat(id, out float floatValue))
                     {
-                        var info = new FloatStatInfo { Id = id, DisplayName = id, FloatValue = floatValue, OriginalValue = floatValue };
+                        var info = new FloatStatInfo
+                        {
+                            Id = id,
+                            DisplayName = id,
+                            FloatValue = floatValue,
+                            OriginalValue = floatValue,
+                            IsIncrementOnly = incrementOnly,
+                            Permission = permission,
+                        };
                         list.Add(info);
                     }
                     break;
             }
-        }
 #endif
+        }
+
         return list;
     }
 

@@ -20,9 +20,9 @@
  *    distribution.
  */
 
-namespace SAM.Game
+namespace SAM.Game.Core
 {
-    internal enum KeyValueType : byte
+    public enum KeyValueType : byte
     {
         None = 0,
         String = 1,
