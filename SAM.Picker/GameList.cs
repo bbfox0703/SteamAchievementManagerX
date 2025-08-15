@@ -31,7 +31,7 @@ namespace SAM.Picker
                 }
             }
 
-            byte[] bytes = null;
+            byte[]? bytes = null;
             usedLocal = false;
 
             try
@@ -50,21 +50,24 @@ namespace SAM.Picker
                 using var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
                 bytes = ReadWithLimit(stream, MaxDownloadBytes);
 
-                // ensure the downloaded data is valid XML
-                try
+                if (bytes != null)
                 {
-                    using var ms = new MemoryStream(bytes, false);
-                    XmlReaderSettings settings = new()
+                    // ensure the downloaded data is valid XML
+                    try
                     {
-                        DtdProcessing = DtdProcessing.Prohibit,
-                        XmlResolver = null,
-                    };
-                    using XmlReader reader = XmlReader.Create(ms, settings);
-                    _ = XDocument.Load(reader, LoadOptions.SetLineInfo);
-                }
-                catch (Exception)
-                {
-                    throw new InvalidDataException("Downloaded game list is invalid XML");
+                        using var ms = new MemoryStream(bytes, false);
+                        XmlReaderSettings settings = new()
+                        {
+                            DtdProcessing = DtdProcessing.Prohibit,
+                            XmlResolver = null,
+                        };
+                        using XmlReader reader = XmlReader.Create(ms, settings);
+                        _ = XDocument.Load(reader, LoadOptions.SetLineInfo);
+                    }
+                    catch (Exception)
+                    {
+                        throw new InvalidDataException("Downloaded game list is invalid XML");
+                    }
                 }
             }
             catch (Exception)
