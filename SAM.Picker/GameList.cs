@@ -1,17 +1,21 @@
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Security;
+using System.Net.Http;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace SAM.Picker
 {
     internal static class GameList
     {
-        public static byte[] Load(string baseDirectory, Func<Uri, byte[]> downloader, out bool usedLocal)
+        // Maximum allowed size for the games.xml download.
+        internal const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
+
+        public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
-            if (downloader == null)
+            if (httpClient == null)
             {
-                throw new ArgumentNullException(nameof(downloader));
+                throw new ArgumentNullException(nameof(httpClient));
             }
 
             string localPath = Path.Combine(baseDirectory, "games.xml");
@@ -32,19 +36,40 @@ namespace SAM.Picker
 
             try
             {
-                RemoteCertificateValidationCallback previousCallback = ServicePointManager.ServerCertificateValidationCallback;
-                ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
+                using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("https://gib.me/sam/games.xml"));
+                using var response = httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                    .GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+
+                var contentLength = response.Content.Headers.ContentLength;
+                if (contentLength == null || contentLength.Value > MaxDownloadBytes)
+                {
+                    throw new HttpRequestException("Response too large or missing length");
+                }
+
+                using var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+                bytes = ReadWithLimit(stream, MaxDownloadBytes);
+
+                // ensure the downloaded data is valid XML
                 try
                 {
-                    bytes = downloader(new Uri("https://gib.me/sam/games.xml"));
+                    using var ms = new MemoryStream(bytes, false);
+                    XmlReaderSettings settings = new()
+                    {
+                        DtdProcessing = DtdProcessing.Prohibit,
+                        XmlResolver = null,
+                    };
+                    using XmlReader reader = XmlReader.Create(ms, settings);
+                    _ = XDocument.Load(reader, LoadOptions.SetLineInfo);
                 }
-                finally
+                catch (Exception)
                 {
-                    ServicePointManager.ServerCertificateValidationCallback = previousCallback;
+                    throw new InvalidDataException("Downloaded game list is invalid XML");
                 }
             }
-            catch
+            catch (Exception)
             {
+                bytes = null;
             }
 
             if (bytes != null)
@@ -87,6 +112,24 @@ namespace SAM.Picker
             }
 
             return bytes;
+        }
+
+        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
+        {
+            using MemoryStream memory = new();
+            byte[] buffer = new byte[81920];
+            int read;
+            int total = 0;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
     }
 }

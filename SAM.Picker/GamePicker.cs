@@ -31,7 +31,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Windows.Forms;
+using System.Xml;
 using System.Xml.XPath;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
@@ -87,7 +89,10 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
-            this._HttpClient = new HttpClient();
+            this._HttpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
             this.FormClosed += (_, _) => this._HttpClient.Dispose();
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
@@ -114,9 +119,44 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private async System.Threading.Tasks.Task<byte[]> DownloadDataAsync(Uri uri)
+        private const int MaxLogoBytes = 512 * 1024; // 512 KB
+        private const int MaxLogoDimension = 1024; // px
+
+        private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            return await this._HttpClient.GetByteArrayAsync(uri);
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var contentLength = response.Content.Headers.ContentLength;
+            if (contentLength == null || contentLength.Value > MaxLogoBytes)
+            {
+                throw new HttpRequestException("Response too large or missing length");
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var data = ReadWithLimit(stream, MaxLogoBytes);
+            return (data, contentType);
+        }
+
+        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
+        {
+            using MemoryStream memory = new();
+            byte[] buffer = new byte[81920];
+            int read;
+            int total = 0;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
@@ -126,18 +166,25 @@ namespace SAM.Picker
             bool usedLocal;
             byte[] bytes = GameList.Load(
                 AppDomain.CurrentDomain.BaseDirectory,
-                uri => this.DownloadDataAsync(uri).GetAwaiter().GetResult(),
+                this._HttpClient,
                 out usedLocal);
 
-            if (usedLocal == true)
-            {
-                e.Result = "Loaded bundled game list due to network failure.";
-            }
+            //Silent load from local file if network fails
+            //if (usedLocal == true)
+            //{
+            //    e.Result = "Loaded bundled game list due to network failure.";
+            //}
 
             List<KeyValuePair<uint, string>> pairs = new();
             using (MemoryStream stream = new(bytes, false))
             {
-                XPathDocument document = new(stream);
+                XmlReaderSettings settings = new()
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                };
+                using var reader = XmlReader.Create(stream, settings);
+                var document = new XPathDocument(reader);
                 var navigator = document.CreateNavigator();
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
@@ -154,6 +201,10 @@ namespace SAM.Picker
             this._PickerStatusLabel.Text = "Checking game ownership...";
             foreach (var kv in pairs)
             {
+                if (this._Games.ContainsKey(kv.Key) == true)
+                {
+                    continue;
+                }
                 this.AddGame(kv.Key, kv.Value);
             }
         }
@@ -179,6 +230,7 @@ namespace SAM.Picker
             }
 
             this.RefreshGames();
+            this.SaveOwnedGames();
             this._RefreshGamesButton.Enabled = true;
             this.DownloadNextLogo();
         }
@@ -295,6 +347,12 @@ namespace SAM.Picker
 
             this._LogosAttempted.Add(info.ImageUrl);
 
+            if (ImageUrlValidator.TryCreateUri(info.ImageUrl, out var uri) == false)
+            {
+                e.Result = new LogoInfo(info.Id, null);
+                return;
+            }
+
             string cacheFile = null;
             if (this._UseIconCache == true)
             {
@@ -304,11 +362,31 @@ namespace SAM.Picker
                     if (File.Exists(cacheFile) == true)
                     {
                         var bytes = File.ReadAllBytes(cacheFile);
-                        using var stream = new MemoryStream(bytes, false);
-                        using var image = Image.FromStream(stream, false, false);
-                        Bitmap bitmap = new(image);
-                        e.Result = new LogoInfo(info.Id, bitmap);
-                        return;
+                        if (bytes.Length <= MaxLogoBytes)
+                        {
+                            using var stream = new MemoryStream(bytes, false);
+                            try
+                            {
+                                using var image = Image.FromStream(
+                                    stream,
+                                    useEmbeddedColorManagement: false,
+                                    validateImageData: true);
+                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
+                                {
+                                    Bitmap bitmap = new(image);
+                                    e.Result = new LogoInfo(info.Id, bitmap);
+                                    return;
+                                }
+                            }
+                            catch (ArgumentException)
+                            {
+                                try { File.Delete(cacheFile); } catch { }
+                            }
+                            catch (OutOfMemoryException)
+                            {
+                                try { File.Delete(cacheFile); } catch { }
+                            }
+                        }
                     }
                 }
                 catch (Exception)
@@ -319,27 +397,57 @@ namespace SAM.Picker
 
             try
             {
-                var data = this.DownloadDataAsync(new Uri(info.ImageUrl)).GetAwaiter().GetResult();
+                var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
+                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    throw new InvalidDataException("Invalid content type");
+                }
+
                 using (MemoryStream stream = new(data, false))
                 {
-                    Bitmap bitmap = new(stream);
-                    e.Result = new LogoInfo(info.Id, bitmap);
-
-                    if (this._UseIconCache == true && cacheFile != null)
+                    try
                     {
-                        try
+                        using (var image = Image.FromStream(
+                                   stream,
+                                   useEmbeddedColorManagement: false,
+                                   validateImageData: true))
                         {
-                            bitmap.Save(cacheFile, ImageFormat.Png);
+                            if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                            {
+                                throw new InvalidDataException("Image dimensions too large");
+                            }
+
+                            Bitmap bitmap = new(image);
+                            e.Result = new LogoInfo(info.Id, bitmap);
+
+                            if (this._UseIconCache == true && cacheFile != null)
+                            {
+                                try
+                                {
+                                    File.WriteAllBytes(cacheFile, data);
+                                }
+                                catch (Exception)
+                                {
+                                    this._UseIconCache = false;
+                                }
+                            }
                         }
-                        catch (Exception)
-                        {
-                            this._UseIconCache = false;
-                        }
+                    }
+                    catch (ArgumentException)
+                    {
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
+                    }
+                    catch (OutOfMemoryException)
+                    {
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(ex);
                 e.Result = new LogoInfo(info.Id, null);
             }
         }
@@ -406,42 +514,60 @@ namespace SAM.Picker
             }
         }
 
+        private static bool TrySanitizeCandidate(string candidate, out string sanitized)
+        {
+            sanitized = Path.GetFileName(candidate);
+
+            if (candidate.IndexOf("..", StringComparison.Ordinal) >= 0 ||
+                candidate.IndexOf(':') >= 0)
+            {
+                return false;
+            }
+
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Scheme) == false)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private string GetGameImageUrl(uint id)
         {
             string candidate;
 
             var currentLanguage = "";
 
-            if (_LanguageComboBox.Text.Length == 0 )
+            if (_LanguageComboBox.Text.Length == 0)
             {
                 currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
                 _LanguageComboBox.Text = currentLanguage;
             }
             else
             {
-                currentLanguage = _LanguageComboBox.Text;                
+                currentLanguage = _LanguageComboBox.Text;
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
 
-            if (string.IsNullOrEmpty(candidate) == false)
+            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out var safeCandidate))
             {
-                return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{candidate}");
+                return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
             }
 
             if (currentLanguage != "english")
             {
                 candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
-                if (string.IsNullOrEmpty(candidate) == false)
+                if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
                 {
-                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{candidate}");
+                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
                 }
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
-            if (string.IsNullOrEmpty(candidate) == false)
+            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
             {
-                return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{candidate}.jpg");
+                return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
             }
 
             return null;
@@ -498,9 +624,57 @@ namespace SAM.Picker
             this._Games.Add(id, info);
         }
 
+        private void LoadCachedOwnedGames()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "usergames.xml");
+                if (File.Exists(path) == false)
+                {
+                    return;
+                }
+
+                using var stream = File.OpenRead(path);
+                XmlReaderSettings settings = new()
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                };
+                using var reader = XmlReader.Create(stream, settings);
+                var document = new XPathDocument(reader);
+                var navigator = document.CreateNavigator();
+                var nodes = navigator.Select("/games/game");
+                while (nodes.MoveNext() == true)
+                {
+                    string idText = nodes.Current.GetAttribute("id", "");
+                    if (uint.TryParse(idText, out var id) == false)
+                    {
+                        continue;
+                    }
+                    if (this._Games.ContainsKey(id) == true)
+                    {
+                        continue;
+                    }
+                    if (this.OwnsGame(id) == false)
+                    {
+                        continue;
+                    }
+                    GameInfo info = new(id, null);
+                    info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
+                    this._Games.Add(id, info);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+
         private void AddGames()
         {
             this._Games.Clear();
+            this.LoadCachedOwnedGames();
+            this.RefreshGames();
             this._RefreshGamesButton.Enabled = false;
             this._ListWorker.RunWorkerAsync();
         }
@@ -515,6 +689,40 @@ namespace SAM.Picker
             this._CallbackTimer.Enabled = false;
             this._SteamClient.RunCallbacks(false);
             this._CallbackTimer.Enabled = true;
+        }
+
+        private void SaveOwnedGames()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "usergames.xml");
+                string tempPath = path + ".tmp";
+
+                using (var writer = XmlWriter.Create(tempPath, new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 }))
+                {
+                    writer.WriteStartElement("games");
+                    foreach (var id in this._Games.Keys.OrderBy(k => k))
+                    {
+                        writer.WriteStartElement("game");
+                        writer.WriteAttributeString("id", id.ToString(CultureInfo.InvariantCulture));
+                        writer.WriteEndElement();
+                    }
+                    writer.WriteEndElement();
+                }
+
+                if (File.Exists(path) == true)
+                {
+                    File.Replace(tempPath, path, null);
+                }
+                else
+                {
+                    File.Move(tempPath, path);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
         }
 
         private void OnActivateGame(object sender, EventArgs e)
@@ -532,9 +740,21 @@ namespace SAM.Picker
                 return;
             }
 
+            string gameExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SAM.Game.exe");
+            if (File.Exists(gameExe) == false)
+            {
+                MessageBox.Show(
+                    this,
+                    "SAM.Game.exe is missing.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
             try
             {
-                Process.Start("SAM.Game.exe", info.Id.ToString(CultureInfo.InvariantCulture));
+                Process.Start(gameExe, info.Id.ToString(CultureInfo.InvariantCulture));
             }
             catch (Win32Exception)
             {

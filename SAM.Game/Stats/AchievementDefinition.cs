@@ -24,11 +24,11 @@ namespace SAM.Game.Stats
 {
     internal class AchievementDefinition
     {
-        public string Id;
-        public string Name;
-        public string Description;
-        public string IconNormal;
-        public string IconLocked;
+        public string Id = string.Empty;
+        public string Name = string.Empty;
+        public string Description = string.Empty;
+        public string IconNormal = string.Empty;
+        public string IconLocked = string.Empty ;
         public bool IsHidden;
         public int Permission;
 

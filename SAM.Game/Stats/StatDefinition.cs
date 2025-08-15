@@ -24,8 +24,8 @@ namespace SAM.Game.Stats
 {
     internal abstract class StatDefinition
     {
-        public string Id;
-        public string DisplayName;
+        public string Id = string.Empty;
+        public string DisplayName = string.Empty;
         public int Permission;
     }
 }

@@ -39,7 +39,10 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToInt32(data, 0);
         }
 
@@ -47,7 +50,10 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToUInt32(data, 0);
         }
 
@@ -55,7 +61,10 @@ namespace SAM.Game
         {
             var data = new byte[8];
             int read = stream.Read(data, 0, 8);
-            Debug.Assert(read == 8);
+            if (read != 8)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToUInt64(data, 0);
         }
 
@@ -63,11 +72,14 @@ namespace SAM.Game
         {
             var data = new byte[4];
             int read = stream.Read(data, 0, 4);
-            Debug.Assert(read == 4);
+            if (read != 4)
+            {
+                throw new EndOfStreamException();
+            }
             return BitConverter.ToSingle(data, 0);
         }
 
-        internal static string ReadStringInternalDynamic(this Stream stream, Encoding encoding, char end)
+        internal static string ReadStringInternalDynamic(this Stream stream, Encoding encoding, char end, int maxLength)
         {
             int characterSize = encoding.GetByteCount("e");
             Debug.Assert(characterSize == 1 || characterSize == 2 || characterSize == 4);
@@ -75,6 +87,7 @@ namespace SAM.Game
 
             int i = 0;
             var data = new byte[128 * characterSize];
+            int length = 0;
 
             while (true)
             {
@@ -84,7 +97,10 @@ namespace SAM.Game
                 }
 
                 int read = stream.Read(data, i, characterSize);
-                Debug.Assert(read == characterSize);
+                if (read != characterSize)
+                {
+                    throw new EndOfStreamException();
+                }
 
                 if (encoding.GetString(data, i, characterSize) == characterEnd)
                 {
@@ -92,6 +108,11 @@ namespace SAM.Game
                 }
 
                 i += characterSize;
+                length++;
+                if (length > maxLength)
+                {
+                    throw new InvalidDataException("String exceeded maximum allowed length");
+                }
             }
 
             if (i == 0)
@@ -104,12 +125,14 @@ namespace SAM.Game
 
         public static string ReadStringAscii(this Stream stream)
         {
-            return stream.ReadStringInternalDynamic(Encoding.ASCII, '\0');
+            const int maxLength = 4096;
+            return stream.ReadStringInternalDynamic(Encoding.ASCII, '\0', maxLength);
         }
 
         public static string ReadStringUnicode(this Stream stream)
         {
-            return stream.ReadStringInternalDynamic(Encoding.UTF8, '\0');
+            const int maxLength = 4096;
+            return stream.ReadStringInternalDynamic(Encoding.UTF8, '\0', maxLength);
         }
     }
 }

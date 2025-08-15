@@ -12,7 +12,7 @@
     <FileVersion>7.0.37.0</FileVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Blank.ico</ApplicationIcon>
+    <ApplicationIcon>SAM.Game.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
@@ -25,6 +25,7 @@
     <LangVersion>9.0</LangVersion>
     <Platforms>x64</Platforms>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <OutputPath>..\bin\</OutputPath>
@@ -34,7 +35,11 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="SAM.Game.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="DoubleBufferedListView.cs">

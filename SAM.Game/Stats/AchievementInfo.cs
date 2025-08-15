@@ -27,15 +27,15 @@ namespace SAM.Game.Stats
 {
     internal class AchievementInfo
     {
-        public string Id;
+        public string Id = string.Empty;
         public bool IsAchieved;
         public DateTime? UnlockTime;
         public int Permission;
-        public string IconNormal;
-        public string IconLocked;
-        public string Name;
-        public string Description;
-        public ListViewItem Item;
+        public string? IconNormal = string.Empty;
+        public string? IconLocked = string.Empty;
+        public string Name = string.Empty;
+        public string Description = string.Empty;
+        public ListViewItem Item = null!;
 
         #region public int ImageIndex;
         public int ImageIndex

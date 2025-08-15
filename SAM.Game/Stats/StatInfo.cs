@@ -25,8 +25,8 @@ namespace SAM.Game.Stats
     internal abstract class StatInfo
     {
         public abstract bool IsModified { get; }
-        public string Id { get; set; }
-        public string DisplayName { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
         public abstract object Value { get; set; }
         public bool IsIncrementOnly { get; set; }
         public int Permission { get; set; }

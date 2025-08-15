@@ -7,10 +7,7 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\\SAM.Picker\\GameList.cs" Link="GameList.cs" />
-    <Compile Include="..\\SAM.Picker\\ImageUrlValidator.cs" Link="ImageUrlValidator.cs" />
-    <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
-    <Reference Include="System.Net.Http" />
+    <Compile Include="..\\SAM.Game\\StreamHelpers.cs" Link="StreamHelpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />

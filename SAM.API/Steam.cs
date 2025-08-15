@@ -23,6 +23,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.Win32;
 
 namespace SAM.API
@@ -40,11 +41,16 @@ namespace SAM.API
             [DllImport("kernel32.dll", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             internal static extern bool FreeLibrary(IntPtr module);
-            [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            internal static extern bool SetDllDirectory(string path);
 
-            internal const uint LoadWithAlteredSearchPath = 8;
+            [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+            internal static extern IntPtr AddDllDirectory(string path);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool RemoveDllDirectory(IntPtr handle);
+
+            internal const uint LoadLibrarySearchDefaultDirs = 0x00001000;
+            internal const uint LoadLibrarySearchUserDirs = 0x00000400;
         }
 
         private static Delegate GetExportDelegate<TDelegate>(IntPtr module, string name)
@@ -141,36 +147,97 @@ namespace SAM.API
                 return false;
             }
 
-            Native.SetDllDirectory(path + ";" + Path.Combine(path, "bin"));
-
+            var binPath = Path.Combine(path, "bin");
             string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
             string libraryPath = Path.Combine(path, library);
-            IntPtr module = Native.LoadLibraryEx(libraryPath, IntPtr.Zero, Native.LoadWithAlteredSearchPath);
-            if (module == IntPtr.Zero)
+            if (File.Exists(libraryPath) == false)
             {
-                return false;
+                libraryPath = Path.Combine(binPath, library);
+                if (File.Exists(libraryPath) == false)
+                {
+                    return false;
+                }
             }
 
-            _CallCreateInterface = GetExportFunction<NativeCreateInterface>(module, "CreateInterface");
-            if (_CallCreateInterface == null)
+            IntPtr pathHandle = IntPtr.Zero;
+            IntPtr binHandle = IntPtr.Zero;
+            try
             {
-                return false;
-            }
+                pathHandle = Native.AddDllDirectory(path);
+                if (pathHandle == IntPtr.Zero)
+                {
+                    return false;
+                }
 
-            _CallSteamBGetCallback = GetExportFunction<NativeSteamGetCallback>(module, "Steam_BGetCallback");
-            if (_CallSteamBGetCallback == null)
+                binHandle = Native.AddDllDirectory(binPath);
+                if (binHandle == IntPtr.Zero)
+                {
+                    return false;
+                }
+
+                try
+                {
+                    using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(libraryPath));
+                    if (certificate.Verify() == false)
+                    {
+                        return false;
+                    }
+
+                    // Pin the certificate identity to Valve's known subject
+                    const string ValveSubject = "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US";
+                    var subject = certificate.Subject;
+                    if (string.Equals(subject, ValveSubject, StringComparison.OrdinalIgnoreCase) == false)
+                    {
+                        return false;
+                    }
+                }
+                catch
+                {
+                    return false;
+                }
+
+                IntPtr module = Native.LoadLibraryEx(
+                    libraryPath,
+                    IntPtr.Zero,
+                    Native.LoadLibrarySearchDefaultDirs | Native.LoadLibrarySearchUserDirs);
+                if (module == IntPtr.Zero)
+                {
+                    return false;
+                }
+
+                _CallCreateInterface = GetExportFunction<NativeCreateInterface>(module, "CreateInterface");
+                if (_CallCreateInterface == null)
+                {
+                    return false;
+                }
+
+                _CallSteamBGetCallback = GetExportFunction<NativeSteamGetCallback>(module, "Steam_BGetCallback");
+                if (_CallSteamBGetCallback == null)
+                {
+                    return false;
+                }
+
+                _CallSteamFreeLastCallback = GetExportFunction<NativeSteamFreeLastCallback>(module, "Steam_FreeLastCallback");
+                if (_CallSteamFreeLastCallback == null)
+                {
+                    return false;
+                }
+
+                _Handle = module;
+                return true;
+            }
+            finally
             {
-                return false;
-            }
+                if (binHandle != IntPtr.Zero)
+                {
+                    Native.RemoveDllDirectory(binHandle);
+                }
 
-            _CallSteamFreeLastCallback = GetExportFunction<NativeSteamFreeLastCallback>(module, "Steam_FreeLastCallback");
-            if (_CallSteamFreeLastCallback == null)
-            {
-                return false;
+                if (pathHandle != IntPtr.Zero)
+                {
+                    Native.RemoveDllDirectory(pathHandle);
+                }
             }
-
-            _Handle = module;
-            return true;
         }
         public static void Unload()
         {
