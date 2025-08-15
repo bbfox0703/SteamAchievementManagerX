@@ -1419,10 +1419,15 @@ namespace SAM.Game
                 this.order = order;
             }
 
-            public int Compare(object x, object y)
+            public int Compare(object? x, object? y)
             {
-                var s1 = ((ListViewItem)x).SubItems[col].Text;
-                var s2 = ((ListViewItem)y).SubItems[col].Text;
+                if (x is not ListViewItem itemX || y is not ListViewItem itemY)
+                {
+                    return 0;
+                }
+
+                var s1 = itemX.SubItems[col].Text;
+                var s2 = itemY.SubItems[col].Text;
 
                 int result;
 
