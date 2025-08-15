@@ -3,7 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Text;
-using SAM.Picker;
+using SAM.Picker.Core;
 using Xunit;
 
 public class GameListTests

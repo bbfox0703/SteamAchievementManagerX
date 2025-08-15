@@ -1,0 +1,21 @@
+<Window
+    x:Class="SAM.Picker.Modern.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SAM.Picker.Modern"
+    Title="SAM Picker Modern">
+    <StackPanel>
+        <TextBox x:Name="SearchBox" PlaceholderText="Search" Margin="8" TextChanged="OnSearchTextChanged"/>
+        <ListView x:Name="GameList" ItemsSource="{x:Bind ViewModel.FilteredGames, Mode=OneWay}" SelectionMode="Single">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:GameViewModel">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Width="32" Height="32" Source="{x:Bind Logo, Mode=OneWay}"/>
+                        <TextBlock Text="{x:Bind Name}" VerticalAlignment="Center"/>
+                        <Button Content="Launch" Click="OnLaunchClicked"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackPanel>
+</Window>

@@ -6,12 +6,12 @@ using System.Net.Http;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace SAM.Picker
+namespace SAM.Picker.Core
 {
-    internal static class GameList
+    public static class GameList
     {
         // Maximum allowed size for the games.xml download.
-        internal const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
+        public const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
 
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {

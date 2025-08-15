@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -35,6 +34,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
+using SAM.Picker.Core;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
@@ -53,8 +53,7 @@ namespace SAM.Picker
         private readonly HashSet<string> _LogosAttempted;
         private readonly ConcurrentQueue<GameInfo> _LogoQueue;
 
-        private readonly string _IconCacheDirectory;
-        private bool _UseIconCache;
+        private readonly IconCache _IconCache;
 
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
@@ -66,17 +65,6 @@ namespace SAM.Picker
             this._LogosAttempting = new();
             this._LogosAttempted = new();
             this._LogoQueue = new();
-
-            this._IconCacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appcache");
-            try
-            {
-                Directory.CreateDirectory(this._IconCacheDirectory);
-                this._UseIconCache = true;
-            }
-            catch (Exception)
-            {
-                this._UseIconCache = false;
-            }
 
             this.InitializeComponent();
 
@@ -94,6 +82,7 @@ namespace SAM.Picker
                 Timeout = TimeSpan.FromSeconds(30),
             };
             this.FormClosed += (_, _) => this._HttpClient.Dispose();
+            this._IconCache = new IconCache(this._HttpClient, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appcache"));
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
@@ -119,45 +108,6 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private const int MaxLogoBytes = 512 * 1024; // 512 KB
-        private const int MaxLogoDimension = 1024; // px
-
-        private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-
-            var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > MaxLogoBytes)
-            {
-                throw new HttpRequestException("Response too large or missing length");
-            }
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-
-            using var stream = await response.Content.ReadAsStreamAsync();
-            var data = ReadWithLimit(stream, MaxLogoBytes);
-            return (data, contentType);
-        }
-
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
-        }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
@@ -353,97 +303,19 @@ namespace SAM.Picker
                 return;
             }
 
-            string cacheFile = null;
-            if (this._UseIconCache == true)
-            {
-                cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
-                try
-                {
-                    if (File.Exists(cacheFile) == true)
-                    {
-                        var bytes = File.ReadAllBytes(cacheFile);
-                        if (bytes.Length <= MaxLogoBytes)
-                        {
-                            using var stream = new MemoryStream(bytes, false);
-                            try
-                            {
-                                using var image = Image.FromStream(
-                                    stream,
-                                    useEmbeddedColorManagement: false,
-                                    validateImageData: true);
-                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
-                                {
-                                    Bitmap bitmap = new(image);
-                                    e.Result = new LogoInfo(info.Id, bitmap);
-                                    return;
-                                }
-                            }
-                            catch (ArgumentException)
-                            {
-                                try { File.Delete(cacheFile); } catch { }
-                            }
-                            catch (OutOfMemoryException)
-                            {
-                                try { File.Delete(cacheFile); } catch { }
-                            }
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    this._UseIconCache = false;
-                }
-            }
-
             try
             {
-                var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
-                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+                var data = this._IconCache.GetOrDownloadAsync(info.Id, uri).GetAwaiter().GetResult();
+                if (data == null)
                 {
-                    throw new InvalidDataException("Invalid content type");
+                    e.Result = new LogoInfo(info.Id, null);
+                    return;
                 }
 
-                using (MemoryStream stream = new(data, false))
-                {
-                    try
-                    {
-                        using (var image = Image.FromStream(
-                                   stream,
-                                   useEmbeddedColorManagement: false,
-                                   validateImageData: true))
-                        {
-                            if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
-                            {
-                                throw new InvalidDataException("Image dimensions too large");
-                            }
-
-                            Bitmap bitmap = new(image);
-                            e.Result = new LogoInfo(info.Id, bitmap);
-
-                            if (this._UseIconCache == true && cacheFile != null)
-                            {
-                                try
-                                {
-                                    File.WriteAllBytes(cacheFile, data);
-                                }
-                                catch (Exception)
-                                {
-                                    this._UseIconCache = false;
-                                }
-                            }
-                        }
-                    }
-                    catch (ArgumentException)
-                    {
-                        e.Result = new LogoInfo(info.Id, null);
-                        return;
-                    }
-                    catch (OutOfMemoryException)
-                    {
-                        e.Result = new LogoInfo(info.Id, null);
-                        return;
-                    }
-                }
+                using MemoryStream stream = new(data, false);
+                using var image = Image.FromStream(stream, false, true);
+                Bitmap bitmap = new(image);
+                e.Result = new LogoInfo(info.Id, bitmap);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-using SAM.Picker;
+using SAM.Picker.Core;
 using Xunit;
 
 public class LogoUrlValidatorTests

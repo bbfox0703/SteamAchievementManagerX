@@ -7,8 +7,20 @@
 5. **Countdown to Commit Achievements**: Users can set a countdown timer for committing achievements. Multiple achievements and their respective countdown durations can be configured, and the "Enable Timer" button will execute the countdown.
 6. **Some UI tweaks**: Sorting by listview columns by [r33yl](https://github.com/r33yl), prevent Steam client show activicaty as idle (only when SAM.Game in foreground and turned-on).  
 7. **Icon cache**: Implemented icon cache for SAM.Picker and SAM.Game. Cache folder is under program folder named "appcache".  
-8. **Game list cache**: Implemented game list cache for SAM.Picker. Cache folder is under binaries folder named "appcache".  
-9. **Error handling**: Many error handlings and reduce possible vulnerabilities.  
+8. **Game list cache**: Implemented game list cache for SAM.Picker. Cache folder is under binaries folder named "appcache".
+9. **Error handling**: Many error handlings and reduce possible vulnerabilities.
+
+---
+
+## Modern Picker
+
+`SAM.Picker.Modern` is a new WinUI 3 front‑end that shares game loading and icon caching logic with the classic picker. It presents the game list using data bindings and asynchronous logo downloads.
+
+### Build and Run
+
+1. Install the [Windows App SDK](https://learn.microsoft.com/windows/apps/windows-app-sdk/) and .NET 8 with the Windows workload.
+2. Open `SAM.sln` in Visual Studio and build the `SAM.Picker.Modern` project.
+3. Run the project; selecting a game will launch `SAM.Game.exe` as usual.
 
 ---
 

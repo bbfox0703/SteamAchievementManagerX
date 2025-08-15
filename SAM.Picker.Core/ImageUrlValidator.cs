@@ -3,9 +3,9 @@
 using System;
 using System.Collections.Generic;
 
-namespace SAM.Picker
+namespace SAM.Picker.Core
 {
-    internal static class ImageUrlValidator
+    public static class ImageUrlValidator
     {
         private static readonly HashSet<string> AllowedHosts = new(StringComparer.OrdinalIgnoreCase)
         {
