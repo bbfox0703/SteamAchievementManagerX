@@ -21,7 +21,6 @@
  */
 
 using System;
-using System.Runtime.Serialization;
 
 namespace SAM.Game.Stats
 {
@@ -39,11 +38,6 @@ namespace SAM.Game.Stats
 
         public StatIsProtectedException(string message, Exception innerException)
             : base(message, innerException)
-        {
-        }
-
-        protected StatIsProtectedException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
     }
