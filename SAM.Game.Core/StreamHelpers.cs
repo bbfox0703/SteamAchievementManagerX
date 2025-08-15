@@ -26,7 +26,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace SAM.Game
+namespace SAM.Game.Core
 {
     internal static class StreamHelpers
     {
