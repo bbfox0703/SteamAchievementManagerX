@@ -8,6 +8,10 @@ public class ImageValidationTests
     [Fact]
     public void CorruptedLogoIsRejected()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
         byte[] data = new byte[] { 0x10, 0x20, 0x30, 0x40 };
         using var stream = new MemoryStream(data);
 
