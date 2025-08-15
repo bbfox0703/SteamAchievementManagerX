@@ -11,6 +11,7 @@ namespace SAM.Picker
         {
             "shared.cloudflare.steamstatic.com",
             "cdn.steamstatic.com",
+            "shared.steamstatic.com",
         };
 
         public static bool TryCreateUri(string url, out Uri? uri)
