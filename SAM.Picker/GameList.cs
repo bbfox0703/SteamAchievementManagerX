@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace SAM.Picker
@@ -53,7 +54,13 @@ namespace SAM.Picker
                 try
                 {
                     using var ms = new MemoryStream(bytes, false);
-                    _ = XDocument.Load(ms, LoadOptions.SetLineInfo);
+                    XmlReaderSettings settings = new()
+                    {
+                        DtdProcessing = DtdProcessing.Prohibit,
+                        XmlResolver = null,
+                    };
+                    using XmlReader reader = XmlReader.Create(ms, settings);
+                    _ = XDocument.Load(reader, LoadOptions.SetLineInfo);
                 }
                 catch (Exception)
                 {
