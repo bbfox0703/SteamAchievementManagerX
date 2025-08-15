@@ -31,10 +31,12 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
+using Microsoft.Win32;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
@@ -58,6 +60,30 @@ namespace SAM.Picker
 
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
+        private Color _BorderColor;
+
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_PAINT = 0x000F;
+        private const int HTCLIENT = 1;
+        private const int HTCAPTION = 2;
+        private const int WM_SETTINGCHANGE = 0x001A;
+        private const int WM_THEMECHANGED = 0x031A;
+
+        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMSBT_MAINWINDOW = 2;
+        private const int DWMWCP_ROUND = 2;
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
         public GamePicker(API.Client client)
         {
             this._Games = new();
@@ -79,6 +105,7 @@ namespace SAM.Picker
             }
 
             this.InitializeComponent();
+            this.FormBorderStyle = FormBorderStyle.None;
 
             Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height);
             using (var g = Graphics.FromImage(blank))
@@ -93,12 +120,144 @@ namespace SAM.Picker
             {
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            this.FormClosed += (_, _) => this._HttpClient.Dispose();
+            this.FormClosed += (_, _) =>
+            {
+                this._HttpClient.Dispose();
+                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
+            };
+
+            SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
 
             this.AddGames();
+
+            this.UpdateColors();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            this.TryApplyMica();
+            this.ApplyRoundedCorners();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            this.ApplyRoundedCorners();
+        }
+
+        private void OnUserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+        {
+            this.UpdateColors();
+            this.TryApplyMica();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_NCHITTEST)
+            {
+                base.WndProc(ref m);
+                if ((int)m.Result == HTCLIENT)
+                {
+                    int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                    int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                    Point pt = this.PointToClient(new Point(x, y));
+                    if (this.GetChildAtPoint(pt) == null)
+                    {
+                        m.Result = (IntPtr)HTCAPTION;
+                    }
+                }
+                return;
+            }
+
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_PAINT)
+            {
+                using var g = Graphics.FromHwnd(this.Handle);
+                using var pen = new Pen(this._BorderColor);
+                g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
+            }
+            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            {
+                this.UpdateColors();
+                this.TryApplyMica();
+            }
+        }
+
+        private void TryApplyMica()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
+            {
+                return;
+            }
+
+            int backdrop = DWMSBT_MAINWINDOW;
+            _ = DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+
+            int dark = this.IsLightTheme() ? 0 : 1;
+            _ = DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+        }
+
+        private void ApplyRoundedCorners()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
+                int pref = DWMWCP_ROUND;
+                _ = DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+            }
+            else
+            {
+                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
+                this.Region = Region.FromHrgn(rgn);
+                DeleteObject(rgn);
+            }
+        }
+
+        private bool IsLightTheme()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+                object? value = key?.GetValue("AppsUseLightTheme");
+                if (value is int i)
+                {
+                    return i != 0;
+                }
+            }
+            catch
+            {
+            }
+            return true;
+        }
+
+        private void UpdateColors()
+        {
+            bool light = this.IsLightTheme();
+            if (light)
+            {
+                this._BorderColor = Color.FromArgb(200, 200, 200);
+                this.BackColor = Color.White;
+                this.ForeColor = Color.Black;
+            }
+            else
+            {
+                this._BorderColor = Color.FromArgb(50, 50, 50);
+                this.BackColor = Color.FromArgb(32, 32, 32);
+                this.ForeColor = Color.White;
+            }
+
+            this._PickerToolStrip.BackColor = this.BackColor;
+            this._PickerToolStrip.ForeColor = this.ForeColor;
+            this._PickerStatusStrip.BackColor = this.BackColor;
+            this._PickerStatusStrip.ForeColor = this.ForeColor;
+            this._GameListView.BackColor = this.BackColor;
+            this._GameListView.ForeColor = this.ForeColor;
+
+            this.Invalidate();
         }
 
         private void OnAppDataChanged(APITypes.AppDataChanged param)
