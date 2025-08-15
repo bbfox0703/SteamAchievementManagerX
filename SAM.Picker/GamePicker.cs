@@ -349,6 +349,7 @@ namespace SAM.Picker
 
             if (ImageUrlValidator.TryCreateUri(info.ImageUrl, out var uri) == false)
             {
+                Debug.WriteLine(_($"Invalid image URL for app {info.Id}: {info.ImageUrl}"));
                 e.Result = new LogoInfo(info.Id, null);
                 return;
             }
@@ -447,7 +448,7 @@ namespace SAM.Picker
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex);
+                Debug.WriteLine(_($"Failed to download image for app {info.Id} from {info.ImageUrl}: {ex}"));
                 e.Result = new LogoInfo(info.Id, null);
             }
         }
@@ -550,26 +551,94 @@ namespace SAM.Picker
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
 
-            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out var safeCandidate))
+            if (string.IsNullOrEmpty(candidate) == false)
             {
-                return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
+                {
+                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
+                }
+                else
+                {
+                    Debug.WriteLine(_($"Invalid small_capsule path for app {id} language {currentLanguage}: {candidate}"));
+                }
+            }
+            else
+            {
+                Debug.WriteLine(_($"Missing small_capsule for app {id} language {currentLanguage}"));
             }
 
             if (currentLanguage != "english")
             {
                 candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
-                if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
+                if (string.IsNullOrEmpty(candidate) == false)
                 {
-                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
+                    if (TrySanitizeCandidate(candidate, out var safeCandidate))
+                    {
+                        return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine(_($"Invalid small_capsule path for app {id} language english: {candidate}"));
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine(_($"Missing small_capsule for app {id} language english"));
                 }
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
-            if (string.IsNullOrEmpty(candidate) == false && TrySanitizeCandidate(candidate, out safeCandidate))
+            if (string.IsNullOrEmpty(candidate) == false)
             {
-                return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
+                {
+                    return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
+                }
+                else
+                {
+                    Debug.WriteLine(_($"Invalid logo path for app {id}: {candidate}"));
+                }
+            }
+            else
+            {
+                Debug.WriteLine(_($"Missing logo for app {id}"));
             }
 
+            candidate = this._SteamClient.SteamApps001.GetAppData(id, "library_600x900");
+            if (string.IsNullOrEmpty(candidate) == false)
+            {
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
+                {
+                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
+                }
+                else
+                {
+                    Debug.WriteLine(_($"Invalid library_600x900 path for app {id}: {candidate}"));
+                }
+            }
+            else
+            {
+                Debug.WriteLine(_($"Missing library_600x900 for app {id}"));
+            }
+
+            candidate = this._SteamClient.SteamApps001.GetAppData(id, "header_image");
+            if (string.IsNullOrEmpty(candidate) == false)
+            {
+                if (TrySanitizeCandidate(candidate, out var safeCandidate))
+                {
+                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
+                }
+                else
+                {
+                    Debug.WriteLine(_($"Invalid header_image path for app {id}: {candidate}"));
+                }
+            }
+            else
+            {
+                Debug.WriteLine(_($"Missing header_image for app {id}"));
+            }
+
+            Debug.WriteLine(_($"No image URL found for app {id}"));
             return null;
         }
 
