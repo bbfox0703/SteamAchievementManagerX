@@ -359,12 +359,26 @@ namespace SAM.Picker
                         if (bytes.Length <= MaxLogoBytes)
                         {
                             using var stream = new MemoryStream(bytes, false);
-                            using var image = Image.FromStream(stream, false, false);
-                            if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
+                            try
                             {
-                                Bitmap bitmap = new(image);
-                                e.Result = new LogoInfo(info.Id, bitmap);
-                                return;
+                                using var image = Image.FromStream(
+                                    stream,
+                                    useEmbeddedColorManagement: false,
+                                    validateImageData: true);
+                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
+                                {
+                                    Bitmap bitmap = new(image);
+                                    e.Result = new LogoInfo(info.Id, bitmap);
+                                    return;
+                                }
+                            }
+                            catch (ArgumentException)
+                            {
+                                try { File.Delete(cacheFile); } catch { }
+                            }
+                            catch (OutOfMemoryException)
+                            {
+                                try { File.Delete(cacheFile); } catch { }
                             }
                         }
                     }
@@ -384,26 +398,44 @@ namespace SAM.Picker
                 }
 
                 using (MemoryStream stream = new(data, false))
-                using (var image = Image.FromStream(stream, false, false))
                 {
-                    if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                    try
                     {
-                        throw new InvalidDataException("Image dimensions too large");
+                        using (var image = Image.FromStream(
+                                   stream,
+                                   useEmbeddedColorManagement: false,
+                                   validateImageData: true))
+                        {
+                            if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                            {
+                                throw new InvalidDataException("Image dimensions too large");
+                            }
+
+                            Bitmap bitmap = new(image);
+                            e.Result = new LogoInfo(info.Id, bitmap);
+
+                            if (this._UseIconCache == true && cacheFile != null)
+                            {
+                                try
+                                {
+                                    File.WriteAllBytes(cacheFile, data);
+                                }
+                                catch (Exception)
+                                {
+                                    this._UseIconCache = false;
+                                }
+                            }
+                        }
                     }
-
-                    Bitmap bitmap = new(image);
-                    e.Result = new LogoInfo(info.Id, bitmap);
-
-                    if (this._UseIconCache == true && cacheFile != null)
+                    catch (ArgumentException)
                     {
-                        try
-                        {
-                            File.WriteAllBytes(cacheFile, data);
-                        }
-                        catch (Exception)
-                        {
-                            this._UseIconCache = false;
-                        }
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
+                    }
+                    catch (OutOfMemoryException)
+                    {
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
                     }
                 }
             }

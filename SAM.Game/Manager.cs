@@ -282,31 +282,45 @@ namespace SAM.Game
             var data = ReadWithLimit(stream, MaxIconBytes);
 
             using var imageStream = new MemoryStream(data, false);
-            using var image = Image.FromStream(imageStream, false, false);
-            if (image.Width > MaxIconDimension || image.Height > MaxIconDimension)
+            try
             {
-                throw new InvalidDataException("Image dimensions too large");
-            }
-
-            Bitmap bitmap = new(image);
-
-            if (this._UseIconCache == true)
-            {
-                var cachePath = this.GetAchievementCachePath(info);
-                if (cachePath != null)
+                using var image = Image.FromStream(
+                    imageStream,
+                    useEmbeddedColorManagement: false,
+                    validateImageData: true);
+                if (image.Width > MaxIconDimension || image.Height > MaxIconDimension)
                 {
-                    try
+                    throw new InvalidDataException("Image dimensions too large");
+                }
+
+                Bitmap bitmap = new(image);
+
+                if (this._UseIconCache == true)
+                {
+                    var cachePath = this.GetAchievementCachePath(info);
+                    if (cachePath != null)
                     {
-                        File.WriteAllBytes(cachePath, data);
-                    }
-                    catch (Exception)
-                    {
-                        this._UseIconCache = false;
+                        try
+                        {
+                            File.WriteAllBytes(cachePath, data);
+                        }
+                        catch (Exception)
+                        {
+                            this._UseIconCache = false;
+                        }
                     }
                 }
-            }
 
-            return bitmap;
+                return bitmap;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+            catch (OutOfMemoryException)
+            {
+                return null;
+            }
         }
 
         private static byte[] ReadWithLimit(Stream stream, int maxBytes)
@@ -775,11 +789,25 @@ namespace SAM.Game
                             if (bytes.Length <= MaxIconBytes)
                             {
                                 using var stream = new MemoryStream(bytes, false);
-                                using var image = Image.FromStream(stream, false, false);
-                                if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
+                                try
                                 {
-                                    this.AddAchievementIcon(info, image);
-                                    return;
+                                    using var image = Image.FromStream(
+                                        stream,
+                                        useEmbeddedColorManagement: false,
+                                        validateImageData: true);
+                                    if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
+                                    {
+                                        this.AddAchievementIcon(info, image);
+                                        return;
+                                    }
+                                }
+                                catch (ArgumentException)
+                                {
+                                    try { File.Delete(cachePath); } catch { }
+                                }
+                                catch (OutOfMemoryException)
+                                {
+                                    try { File.Delete(cachePath); } catch { }
                                 }
                             }
                         }
