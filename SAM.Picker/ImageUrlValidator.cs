@@ -11,7 +11,7 @@ namespace SAM.Picker
             "cdn.steamstatic.com",
         };
 
-        public static bool TryCreateUri(string url, out Uri uri)
+        public static bool TryCreateUri(string url, out Uri? uri)
         {
             uri = null;
 
