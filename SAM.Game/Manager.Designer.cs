@@ -88,13 +88,13 @@
             this._MainToolStrip.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this._MainToolStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
             this._MainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this._StoreButton,
             this._ReloadButton,
             this._ResetButton,
             this._TimeNowLabel,
             this._TimerLabel,
-            this._autoMouseMoveButton,
-            this._CloseButton});
+            this._CloseButton,
+            this._StoreButton,
+            this._autoMouseMoveButton});
             this._MainToolStrip.Location = new System.Drawing.Point(0, 0);
             this._MainToolStrip.Name = "_MainToolStrip";
             this._MainToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
