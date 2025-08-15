@@ -66,8 +66,20 @@ namespace SAM.Picker
         private const int WM_PAINT = 0x000F;
         private const int HTCLIENT = 1;
         private const int HTCAPTION = 2;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
         private const int WM_SETTINGCHANGE = 0x001A;
         private const int WM_THEMECHANGED = 0x031A;
+        private const int WM_NCRBUTTONUP = 0x00A5;
+        private const int WM_SYSCOMMAND = 0x0112;
+        private const int TPM_LEFTBUTTON = 0x0000;
+        private const int TPM_RETURNCMD = 0x0100;
 
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
@@ -83,6 +95,15 @@ namespace SAM.Picker
 
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll")]
+        private static extern int TrackPopupMenuEx(IntPtr hmenu, int fuFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         public GamePicker(API.Client client)
         {
@@ -165,11 +186,36 @@ namespace SAM.Picker
                     int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                     int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
                     Point pt = this.PointToClient(new Point(x, y));
-                    if (this.GetChildAtPoint(pt) == null)
+                    const int grip = 8;
+                    bool top = pt.Y < grip;
+                    bool left = pt.X < grip;
+                    bool right = pt.X >= this.ClientSize.Width - grip;
+                    bool bottom = pt.Y >= this.ClientSize.Height - grip;
+
+                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HTTOP;
+                    else if (left) m.Result = (IntPtr)HTLEFT;
+                    else if (right) m.Result = (IntPtr)HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    else
                     {
-                        m.Result = (IntPtr)HTCAPTION;
+                        Control child = this.GetChildAtPoint(pt);
+                        if (child == null || child == this._PickerToolStrip)
+                        {
+                            m.Result = (IntPtr)HTCAPTION;
+                        }
                     }
                 }
+                return;
+            }
+            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            {
+                int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                this.ShowSystemMenu(new Point(x, y));
                 return;
             }
 
@@ -185,6 +231,16 @@ namespace SAM.Picker
             {
                 this.UpdateColors();
                 this.TryApplyMica();
+            }
+        }
+
+        private void ShowSystemMenu(Point screenPoint)
+        {
+            IntPtr hMenu = GetSystemMenu(this.Handle, false);
+            int command = TrackPopupMenuEx(hMenu, TPM_LEFTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            if (command != 0)
+            {
+                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
             }
         }
 
