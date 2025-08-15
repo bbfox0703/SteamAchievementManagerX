@@ -1,0 +1,68 @@
+
+digraph CombinedFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Arial", fontsize=11];
+  edge [fontname="Arial", fontsize=10];
+
+  subgraph cluster_game {
+    label="Steam Game Data Retrieval Flow";
+    color=blue;
+    fontname="Arial";
+    fontsize=12;
+
+    start_g [shape=oval, label="Start"];
+    init_http_g [label="Init shared HttpClient"];
+    resolve_paths_g [label="Resolve app base & full paths"];
+    steam_path_g [label="Compute steamclient path"];
+    verify_sig_g [label="Verify DLL/signature"];
+    cache_check_g [shape=diamond, label="games.xml fresh (<30m)?"];
+    read_cache_g [label="Read/validate games.xml"];
+    download_list_g [label="Download full game list"];
+    validate_download_g [label="Validate size/schema"];
+    backup_old_g [label="Backup existing games.xml"];
+    write_new_g [label="Write new games.xml"];
+    fallback_cache_g [label="Fallback to local cache"];
+    error_out_g [shape=oval, label="Error"];
+    produce_list_g [shape=oval, label="Games ready"];
+
+    start_g -> init_http_g -> resolve_paths_g -> steam_path_g -> verify_sig_g -> cache_check_g;
+    cache_check_g -> read_cache_g [label="Yes"];
+    cache_check_g -> download_list_g [label="No"];
+    read_cache_g -> produce_list_g;
+    read_cache_g -> download_list_g [label="Invalid"];
+    download_list_g -> validate_download_g;
+    validate_download_g -> backup_old_g [label="OK"];
+    validate_download_g -> fallback_cache_g [label="Fail/Invalid"];
+    fallback_cache_g -> read_cache_g;
+    fallback_cache_g -> error_out_g;
+    backup_old_g -> write_new_g -> read_cache_g;
+  }
+
+  subgraph cluster_icon {
+    label="Steam Icon / Achievement Icon Retrieval Flow";
+    color=green;
+    fontname="Arial";
+    fontsize=12;
+
+    start_i [shape=oval, label="Start (AppID/Achievement)"];
+    compute_cache_i [label="Compute sanitized cache path"];
+    check_cached_i [shape=diamond, label="Icon cached?"];
+    return_cached_i [label="Return cached icon"];
+    build_url_i [label="Build URL (Steam CDN/API)"];
+    dl_icon_i [label="Download via HttpClient"];
+    validate_icon_i [label="Validate size/format"];
+    save_icon_i [label="Save to cache"];
+    placeholder_i [label="Return placeholder"];
+    done_i [shape=oval, label="Icon path ready"];
+
+    start_i -> compute_cache_i -> check_cached_i;
+    check_cached_i -> return_cached_i [label="Yes"];
+    check_cached_i -> build_url_i [label="No"];
+    return_cached_i -> done_i;
+    build_url_i -> dl_icon_i -> validate_icon_i;
+    validate_icon_i -> save_icon_i [label="OK"];
+    validate_icon_i -> placeholder_i [label="Invalid"];
+    save_icon_i -> done_i;
+    placeholder_i -> done_i;
+  }
+}
