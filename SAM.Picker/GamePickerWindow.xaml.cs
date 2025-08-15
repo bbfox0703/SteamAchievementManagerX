@@ -11,8 +11,8 @@ namespace SAM.Picker
 
         private void OnRefresh(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Games refreshed";
-            StatusText.Visibility = Visibility.Visible;
+            StatusBar.Message = "Games refreshed";
+            StatusBar.IsOpen = true;
         }
     }
 }

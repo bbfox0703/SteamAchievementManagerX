@@ -31,7 +31,7 @@
     <Content Include="SAM.Picker.ico" />
   </ItemGroup>
   <ItemGroup>
-      <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+      <PackageReference Include="ModernWpf" Version="0.10.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />

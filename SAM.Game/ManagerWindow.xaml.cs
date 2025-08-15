@@ -11,14 +11,14 @@ namespace SAM.Game
 
         private void OnStore(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Store clicked";
-            StatusText.Visibility = Visibility.Visible;
+            StatusBar.Message = "Store clicked";
+            StatusBar.IsOpen = true;
         }
 
         private void OnRefresh(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Data refreshed";
-            StatusText.Visibility = Visibility.Visible;
+            StatusBar.Message = "Data refreshed";
+            StatusBar.IsOpen = true;
         }
     }
 }

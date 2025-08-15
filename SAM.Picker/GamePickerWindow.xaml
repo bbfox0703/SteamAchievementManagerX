@@ -7,11 +7,16 @@
         <ui:NavigationView.MenuItems>
             <ui:NavigationViewItem Content="Games" />
         </ui:NavigationView.MenuItems>
-        <StackPanel>
-            <ui:CommandBar>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ui:CommandBar Grid.Row="0">
                 <ui:AppBarButton Icon="Refresh" Label="Refresh" Click="OnRefresh" />
             </ui:CommandBar>
-            <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="4" />
-        </StackPanel>
+            <ui:InfoBar x:Name="StatusBar" Grid.Row="2" IsOpen="False" Margin="4" />
+        </Grid>
     </ui:NavigationView>
 </Window>
