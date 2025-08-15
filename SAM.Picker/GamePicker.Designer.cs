@@ -68,6 +68,7 @@
             this._FilterJunkMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this._LanguageLabel = new System.Windows.Forms.ToolStripLabel();
             this._LanguageComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this._CloseButton = new System.Windows.Forms.ToolStripButton();
             this._PickerStatusStrip = new System.Windows.Forms.StatusStrip();
             this._PickerStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this._DownloadStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -115,7 +116,8 @@
             this._SearchGameTextBox,
             this._FilterDropDownButton,
             this._LanguageLabel,
-            this._LanguageComboBox});
+            this._LanguageComboBox,
+            this._CloseButton});
             this._PickerToolStrip.Location = new System.Drawing.Point(0, 0);
             this._PickerToolStrip.Name = "_PickerToolStrip";
             this._PickerToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
@@ -252,9 +254,19 @@
             this._LanguageComboBox.Name = "_LanguageComboBox";
             this._LanguageComboBox.Size = new System.Drawing.Size(160, 45);
             this._LanguageComboBox.Visible = false;
-            // 
+            //
+            // _CloseButton
+            //
+            this._CloseButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this._CloseButton.AutoSize = false;
+            this._CloseButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._CloseButton.Name = "_CloseButton";
+            this._CloseButton.Size = new System.Drawing.Size(45, 39);
+            this._CloseButton.Text = "X";
+            this._CloseButton.Click += new System.EventHandler(this.OnCloseButtonClick);
+            //
             // _PickerStatusStrip
-            // 
+            //
             this._PickerStatusStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
             this._PickerStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this._PickerStatusLabel,
@@ -360,6 +372,7 @@
         private System.ComponentModel.BackgroundWorker _ListWorker;
         private System.Windows.Forms.ToolStripTextBox _SearchGameTextBox;
         private System.Windows.Forms.ToolStripLabel _FindGamesLabel;
+        private System.Windows.Forms.ToolStripButton _CloseButton;
 
         #endregion
 

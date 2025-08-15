@@ -291,6 +291,11 @@ namespace SAM.Picker
             }
         }
 
+        private void OnCloseButtonClick(object? sender, EventArgs e)
+        {
+            this.Close();
+        }
+
         private void TryApplyMica()
         {
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
@@ -355,6 +360,8 @@ namespace SAM.Picker
 
             this._PickerToolStrip.BackColor = this.BackColor;
             this._PickerToolStrip.ForeColor = this.ForeColor;
+            this._CloseButton.BackColor = this.BackColor;
+            this._CloseButton.ForeColor = this.ForeColor;
             this._PickerStatusStrip.BackColor = this.BackColor;
             this._PickerStatusStrip.ForeColor = this.ForeColor;
             this._GameListView.BackColor = this.BackColor;
