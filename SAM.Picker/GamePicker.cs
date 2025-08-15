@@ -77,6 +77,7 @@ namespace SAM.Picker
         private const int WM_SETTINGCHANGE = 0x001A;
         private const int WM_THEMECHANGED = 0x031A;
         private const int WM_NCRBUTTONUP = 0x00A5;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int WM_SYSCOMMAND = 0x0112;
         private const int TPM_LEFTBUTTON = 0x0000;
         private const int TPM_RIGHTBUTTON = 0x0002;
@@ -105,6 +106,9 @@ namespace SAM.Picker
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
 
         protected override CreateParams CreateParams
         {
@@ -144,6 +148,8 @@ namespace SAM.Picker
 
             this.InitializeComponent();
             this.FormBorderStyle = FormBorderStyle.None;
+            this._PickerToolStrip.MouseDown += this.OnDragWindow;
+            this._PickerStatusStrip.MouseDown += this.OnDragWindow;
 
             Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height);
             using (var g = Graphics.FromImage(blank))
@@ -226,7 +232,7 @@ namespace SAM.Picker
                     else
                     {
                         Control child = this.GetChildAtPoint(pt);
-                        if (child == null || child == this._PickerToolStrip || child == this._PickerStatusStrip)
+                        if (child == null)
                         {
                             m.Result = (IntPtr)HTCAPTION;
                         }
@@ -254,6 +260,24 @@ namespace SAM.Picker
             {
                 this.UpdateColors();
                 this.TryApplyMica();
+            }
+        }
+
+        private void OnDragWindow(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if (ReferenceEquals(sender, this._PickerToolStrip) && this._PickerToolStrip.GetItemAt(e.Location) != null)
+                {
+                    return;
+                }
+                ReleaseCapture();
+                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                Point screen = ((Control)sender!).PointToScreen(e.Location);
+                this.ShowSystemMenu(screen);
             }
         }
 
