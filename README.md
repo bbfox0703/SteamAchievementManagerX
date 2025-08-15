@@ -22,7 +22,7 @@
    I do not intend to submit any changes or pull requests back to the original repository. This fork may include features and modifications that are not present in the original project.
 
 3. **Purpose**  
-   The primary goal of this fork is to add features and functionalities that I personally find useful or interesting.  
+   The primary goal of this fork is to add features and functionalities that I personally find useful or interesting (playground).  
    These changes are tailored to my own preferences and use cases.
 
 4. **License and Copyright**  
