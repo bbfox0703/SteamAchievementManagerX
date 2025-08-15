@@ -129,9 +129,13 @@ namespace SAM.Picker
             response.EnsureSuccessStatusCode();
 
             var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > MaxLogoBytes)
+            if (contentLength == null)
             {
-                throw new HttpRequestException("Response too large or missing length");
+                Debug.WriteLine(_($"Missing Content-Length header for {uri}"));
+            }
+            else if (contentLength.Value > MaxLogoBytes)
+            {
+                throw new HttpRequestException("Response too large");
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
