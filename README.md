@@ -5,7 +5,9 @@
 3. **Multi-language Support**: SAM.Game will initially fetch achievements in the default language. Users can then select a preferred language and press "Refresh" to display achievements in the chosen language.  
 4. **Countdown to Commit Achievements**: Users can set a countdown timer for committing achievements. Multiple achievements and their respective countdown durations can be configured, and the "Enable Timer" button will execute the countdown.
 5. **Some UI tweaks**: Sorting by listview columns by [r33yl](https://github.com/r33yl), prevent Steam client show activicaty as idle (only when SAM.Game in foreground and turned-on).  
-6. **Icon Cache**: Implemented icon cache for SAM.Picker and SAM.Game. cache folder is under program folder named "appcache".  
+6. **Icon cache**: Implemented icon cache for SAM.Picker and SAM.Game. Cache folder is under program folder named "appcache".  
+7. **Game list cache**: Implemented game list cache for SAM.Picker. Cache folder is under binaries folder named "appcache".  
+8. **Error handling**: Many error handlings and reduce possible vulnerabilities.  
 
 ---
 
