@@ -39,9 +39,6 @@
     <Content Include="SAM.Game.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="System.Net.Http" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Update="DoubleBufferedListView.cs">
       <SubType>Component</SubType>
     </Compile>
