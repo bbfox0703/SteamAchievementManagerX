@@ -18,7 +18,7 @@
     <RepositoryType>Git</RepositoryType>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFrameworks>net48</TargetFrameworks>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Platforms>x64</Platforms>
   </PropertyGroup>
