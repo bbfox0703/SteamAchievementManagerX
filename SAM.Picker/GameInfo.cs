@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -21,7 +21,6 @@
  */
 
 using System.Globalization;
-using System.Windows.Forms;
 
 namespace SAM.Picker
 {
@@ -40,8 +39,6 @@ namespace SAM.Picker
         }
 
         public string ImageUrl;
-
-        public ListViewItem Item;
 
         public GameInfo(uint id, string type)
         {

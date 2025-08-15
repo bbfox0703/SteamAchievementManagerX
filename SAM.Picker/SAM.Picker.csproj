@@ -1,32 +1,21 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
     <AssemblyTitle>Steam Achievement Manager Picker</AssemblyTitle>
     <Company>Gibbed</Company>
     <Authors>Gibbed</Authors>
     <Description>A game picker for the Steam Achievement Manager.</Description>
     <Copyright>Copyright © Gibbed 2019</Copyright>
-  </PropertyGroup>
-  <PropertyGroup>
     <Version>7.0.37</Version>
     <AssemblyVersion>7.0.37.0</AssemblyVersion>
     <FileVersion>7.0.37.0</FileVersion>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationIcon>SAM.Picker.ico</ApplicationIcon>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-  </PropertyGroup>
-  <PropertyGroup>
-    <RepositoryUrl>https://github.com/gibbed/SteamAchievementManager/</RepositoryUrl>
-    <RepositoryType>Git</RepositoryType>
-  </PropertyGroup>
-  <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <LangVersion>9.0</LangVersion>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Platforms>x64</Platforms>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+    <ApplicationIcon>SAM.Picker.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <OutputPath>..\bin\</OutputPath>
@@ -36,27 +25,14 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Update="MyListView.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="GamePicker.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <EmbeddedResource Update="Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <Compile Update="Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="games.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="SAM.Picker.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ModernWpf" Version="0.10.6" />
+    <PackageReference Include="ModernWpf.Controls" Version="0.10.6" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />
