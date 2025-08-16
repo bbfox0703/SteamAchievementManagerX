@@ -2,12 +2,14 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
+#nullable enable
+
 namespace SAM.Picker
 {
     internal static class GameImageUrlResolver
     {
         internal static string? GetGameImageUrl(Func<uint, string, string?> getAppData, uint id, string language)
-        
+
         {
             string? candidate;
 
