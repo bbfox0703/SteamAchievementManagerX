@@ -231,12 +231,10 @@
             // _AchievementListView
             // 
             _AchievementListView.Activation = System.Windows.Forms.ItemActivation.OneClick;
-            _AchievementListView.BackColor = System.Drawing.Color.Black;
             _AchievementListView.BackgroundImageTiled = true;
             _AchievementListView.CheckBoxes = true;
             _AchievementListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { _AchievementNameColumnHeader, _AchievementDescriptionColumnHeader, _AchievementUnlockTimeColumnHeader, _AchievementIDColumnHeader, _AchievementTimerColumnHeader });
             _AchievementListView.Dock = System.Windows.Forms.DockStyle.Fill;
-            _AchievementListView.ForeColor = System.Drawing.Color.White;
             _AchievementListView.FullRowSelect = true;
             _AchievementListView.GridLines = true;
             _AchievementListView.LargeImageList = _AchievementImageList;
@@ -413,11 +411,11 @@
             // 
             _StatisticsTabPage.Controls.Add(_EnableStatsEditingCheckBox);
             _StatisticsTabPage.Controls.Add(_StatisticsDataGridView);
-            _StatisticsTabPage.Location = new System.Drawing.Point(4, 36);
+            _StatisticsTabPage.Location = new System.Drawing.Point(4, 35);
             _StatisticsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
             _StatisticsTabPage.Name = "_StatisticsTabPage";
             _StatisticsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            _StatisticsTabPage.Size = new System.Drawing.Size(1733, 629);
+            _StatisticsTabPage.Size = new System.Drawing.Size(1733, 630);
             _StatisticsTabPage.TabIndex = 1;
             _StatisticsTabPage.Text = "Statistics";
             _StatisticsTabPage.UseVisualStyleBackColor = true;
