@@ -94,6 +94,7 @@ namespace SAM.Game
         private const int TPM_LEFTBUTTON = 0x0000;
         private const int TPM_RIGHTBUTTON = 0x0002;
         private const int TPM_RETURNCMD = 0x0100;
+        private const int LVM_GETHEADER = 0x101F;
 
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
@@ -1633,10 +1634,16 @@ namespace SAM.Game
                 : "Explorer";
 
             SetWindowTheme(this._AchievementListView.Handle, theme, null);
+            IntPtr header = SendMessage(this._AchievementListView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+            if (header != IntPtr.Zero)
+            {
+                SetWindowTheme(header, theme, null);
+            }
             SetWindowTheme(this._MainTabControl.Handle, theme, null);
             SetWindowTheme(this._MainToolStrip.Handle, theme, null);
             SetWindowTheme(this._AchievementsToolStrip.Handle, theme, null);
             SetWindowTheme(this._StatisticsDataGridView.Handle, theme, null);
+            SetWindowTheme(this._EnableStatsEditingCheckBox.Handle, theme, null);
 
             if (this._MatchingStringTextBox.Control != null)
             {
@@ -1648,9 +1655,9 @@ namespace SAM.Game
                 SetWindowTheme(this._AddTimerTextBox.Control.Handle, theme, null);
             }
 
-            if (this._LanguageComboBox.Control != null)
+            if (this._LanguageComboBox.ComboBox != null)
             {
-                SetWindowTheme(this._LanguageComboBox.Control.Handle, theme, null);
+                SetWindowTheme(this._LanguageComboBox.ComboBox.Handle, theme, null);
             }
         }
 
