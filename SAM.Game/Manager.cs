@@ -56,14 +56,14 @@ namespace SAM.Game
         private const int MaxIconDimension = 1024; // px
         private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private readonly List<Stats.AchievementInfo> _IconQueue = new();
-        private readonly List<Stats.StatDefinition> _StatDefinitions = new();
+        private readonly List<Stats.AchievementInfo> _iconQueue = new();
+        private readonly List<Stats.StatDefinition> _statDefinitions = new();
 
-        private readonly List<Stats.AchievementDefinition> _AchievementDefinitions = new();
+        private readonly List<Stats.AchievementDefinition> _achievementDefinitions = new();
 
-        private readonly BindingList<Stats.StatInfo> _Statistics = new();
+        private readonly BindingList<Stats.StatInfo> _statistics = new();
 
-        private readonly API.Callbacks.UserStatsReceived _UserStatsReceivedCallback;
+        private readonly API.Callbacks.UserStatsReceived _userStatsReceivedCallback;
 
         //private API.Callback<APITypes.UserStatsStored> UserStatsStoredCallback;
         // *****************************************************************
@@ -199,7 +199,7 @@ namespace SAM.Game
 
             this._StatisticsDataGridView.DataSource = new BindingSource()
             {
-                DataSource = this._Statistics,
+                DataSource = this._statistics,
             };
 
             this._GameId = gameId;
@@ -240,8 +240,8 @@ namespace SAM.Game
                 base.Text += " | " + this._GameId.ToString(CultureInfo.InvariantCulture);
             }
 
-            this._UserStatsReceivedCallback = client.CreateAndRegisterCallback<API.Callbacks.UserStatsReceived>();
-            this._UserStatsReceivedCallback.OnRun += this.OnUserStatsReceived;
+            this._userStatsReceivedCallback = client.CreateAndRegisterCallback<API.Callbacks.UserStatsReceived>();
+            this._userStatsReceivedCallback.OnRun += this.OnUserStatsReceived;
 
             //this.UserStatsStoredCallback = new API.Callback(1102, new API.Callback.CallbackFunction(this.OnUserStatsStored));
 
@@ -294,17 +294,17 @@ namespace SAM.Game
 
         private async void DownloadNextIcon()
         {
-            if (this._IconQueue.Count == 0)
+            if (this._iconQueue.Count == 0)
             {
                 this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._IconQueue.Count} icons...";
+            this._DownloadStatusLabel.Text = $"Downloading {this._iconQueue.Count} icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            var info = this._IconQueue[0];
-            this._IconQueue.RemoveAt(0);
+            var info = this._iconQueue[0];
+            this._iconQueue.RemoveAt(0);
 
             Bitmap? bitmap = null;
             try
@@ -486,8 +486,8 @@ namespace SAM.Game
                 currentLanguage = _LanguageComboBox.Text;
             }
 
-            this._AchievementDefinitions.Clear();
-            this._StatDefinitions.Clear();
+            this._achievementDefinitions.Clear();
+            this._statDefinitions.Clear();
 
             var stats = kv[this._GameId.ToString(CultureInfo.InvariantCulture)]["stats"];
             if (stats.Valid == false || stats.Children == null)
@@ -518,7 +518,7 @@ namespace SAM.Game
                         var id = stat["name"].AsString("");
                         string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
 
-                        this._StatDefinitions.Add(new Stats.IntegerStatDefinition()
+                        this._statDefinitions.Add(new Stats.IntegerStatDefinition()
                         {
                             Id = stat["name"].AsString(""),
                             DisplayName = name,
@@ -539,7 +539,7 @@ namespace SAM.Game
                         var id = stat["name"].AsString("");
                         string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
 
-                        this._StatDefinitions.Add(new Stats.FloatStatDefinition()
+                        this._statDefinitions.Add(new Stats.FloatStatDefinition()
                         {
                             Id = stat["name"].AsString(""),
                             DisplayName = name,
@@ -573,7 +573,7 @@ namespace SAM.Game
                                     string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
                                     string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
 
-                                    this._AchievementDefinitions.Add(new()
+                                    this._achievementDefinitions.Add(new()
                                     {
                                         Id = id,
                                         Name = name,
@@ -701,7 +701,7 @@ namespace SAM.Game
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
             bool light = this.IsLightTheme();
 
-            foreach (var def in this._AchievementDefinitions)
+            foreach (var def in this._achievementDefinitions)
             {
                 if (string.IsNullOrEmpty(def.Id) == true)
                 {
@@ -806,8 +806,8 @@ namespace SAM.Game
 
         private void GetStatistics()
         {
-            this._Statistics.Clear();
-            foreach (var stat in this._StatDefinitions)
+            this._statistics.Clear();
+            foreach (var stat in this._statDefinitions)
             {
                 if (string.IsNullOrEmpty(stat.Id) == true)
                 {
@@ -820,7 +820,7 @@ namespace SAM.Game
                     {
                         continue;
                     }
-                    this._Statistics.Add(new Stats.IntStatInfo()
+                    this._statistics.Add(new Stats.IntStatInfo()
                     {
                         Id = intStat.Id,
                         DisplayName = intStat.DisplayName,
@@ -836,7 +836,7 @@ namespace SAM.Game
                     {
                         continue;
                     }
-                    this._Statistics.Add(new Stats.FloatStatInfo()
+                    this._statistics.Add(new Stats.FloatStatInfo()
                     {
                         Id = floatStat.Id,
                         DisplayName = floatStat.DisplayName,
@@ -910,7 +910,7 @@ namespace SAM.Game
                 }
             }
 
-            this._IconQueue.Add(info);
+            this._iconQueue.Add(info);
 
             if (startDownload == true)
             {
@@ -965,12 +965,12 @@ namespace SAM.Game
 
         private int StoreStatistics(bool silent = false)
         {
-            if (this._Statistics.Count == 0)
+            if (this._statistics.Count == 0)
             {
                 return 0;
             }
 
-            var statistics = this._Statistics.Where(stat => stat.IsModified == true).ToList();
+            var statistics = this._statistics.Where(stat => stat.IsModified == true).ToList();
             if (statistics.Count == 0)
             {
                 return 0;
