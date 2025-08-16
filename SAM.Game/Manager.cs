@@ -150,6 +150,9 @@ namespace SAM.Game
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hwnd, string? pszSubAppName, string? pszSubIdList);
+
         protected override CreateParams CreateParams
         {
             get
@@ -1493,6 +1496,7 @@ namespace SAM.Game
             base.OnHandleCreated(e);
             this.TryApplyMica();
             this.ApplyRoundedCorners();
+            this.ApplyControlThemes();
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -1622,6 +1626,16 @@ namespace SAM.Game
             }
         }
 
+        private void ApplyControlThemes()
+        {
+            string theme = !this.IsLightTheme() && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)
+                ? "DarkMode_Explorer"
+                : "Explorer";
+
+            SetWindowTheme(this._AchievementListView.Handle, theme, null);
+            SetWindowTheme(this._MainTabControl.Handle, theme, null);
+        }
+
         private bool IsLightTheme()
         {
             try
@@ -1670,6 +1684,7 @@ namespace SAM.Game
             this._MainTabControl.BackColor = this.BackColor;
             this._MainTabControl.ForeColor = this.ForeColor;
 
+            this.ApplyControlThemes();
             this.Invalidate();
         }
         protected override void Dispose(bool disposing)
