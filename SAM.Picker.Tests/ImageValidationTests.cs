@@ -1,10 +1,12 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Runtime.Versioning;
 using Xunit;
 
 public class ImageValidationTests
 {
+    [SupportedOSPlatform("windows")]
     [Fact]
     public void CorruptedLogoIsRejected()
     {
