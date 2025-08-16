@@ -360,18 +360,7 @@ namespace SAM.Picker
                 this.ForeColor = Color.White;
             }
 
-            this._PickerToolStrip.BackColor = this.BackColor;
-            this._PickerToolStrip.ForeColor = this.ForeColor;
-            this._CloseButton.BackColor = this.BackColor;
-            this._CloseButton.ForeColor = this.ForeColor;
-            this._AddGameTextBox.BackColor = this.BackColor;
-            this._AddGameTextBox.ForeColor = this.ForeColor;
-            this._SearchGameTextBox.BackColor = this.BackColor;
-            this._SearchGameTextBox.ForeColor = this.ForeColor;
-            this._PickerStatusStrip.BackColor = this.BackColor;
-            this._PickerStatusStrip.ForeColor = this.ForeColor;
-            this._GameListView.BackColor = this.BackColor;
-            this._GameListView.ForeColor = this.ForeColor;
+            ThemeHelper.ApplyTheme(this, this.BackColor, this.ForeColor);
 
             this.Invalidate();
         }
