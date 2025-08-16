@@ -595,7 +595,12 @@ namespace SAM.Picker
                 return;
             }
 
-            var text = e.Text;
+            var text = e.Text ?? string.Empty;
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
             int startIndex = e.StartIndex;
 
             Predicate<GameInfo> predicate;
