@@ -6,9 +6,9 @@ namespace SAM.Picker
 {
     internal static class GameImageUrlResolver
     {
-        internal static string GetGameImageUrl(Func<uint, string, string> getAppData, uint id, string language)
+        internal static string? GetGameImageUrl(Func<uint, string, string?> getAppData, uint id, string language)
         {
-            string candidate;
+            string? candidate;
 
             candidate = getAppData(id, $"small_capsule/{language}");
             if (string.IsNullOrEmpty(candidate) == false)
