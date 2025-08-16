@@ -333,7 +333,7 @@ namespace SAM.Picker
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                object? value = key?.GetValue("AppsUseLightTheme");
+                object value = key?.GetValue("AppsUseLightTheme");
                 if (value is int i)
                 {
                     return i != 0;
@@ -629,7 +629,7 @@ namespace SAM.Picker
 
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
         {
-            var info = (GameInfo?)e.Argument;
+            var info = (GameInfo)e.Argument;
 
             List<string> urls = new() { info.ImageUrl };
             var fallbackUrl = _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{info.Id}/header.jpg");
@@ -638,7 +638,7 @@ namespace SAM.Picker
                 urls.Add(fallbackUrl);
             }
 
-            string? cacheFile = null;
+            string cacheFile = null;
             if (this._UseIconCache == true)
             {
                 cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
