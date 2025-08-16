@@ -39,6 +39,13 @@ namespace SAM.WinForms
             RegisterHandler(typeof(ListView), (o, back, fore) =>
             {
                 var list = (ListView)o;
+                list.OwnerDraw = true;
+                list.DrawColumnHeader -= OnListViewDrawColumnHeader;
+                list.DrawColumnHeader += OnListViewDrawColumnHeader;
+                list.DrawItem -= OnListViewDrawItem;
+                list.DrawItem += OnListViewDrawItem;
+                list.DrawSubItem -= OnListViewDrawSubItem;
+                list.DrawSubItem += OnListViewDrawSubItem;
 
                 foreach (ColumnHeader column in list.Columns)
                 {
@@ -125,6 +132,7 @@ namespace SAM.WinForms
                 tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
                 tabs.DrawItem -= OnTabControlDrawItem;
                 tabs.DrawItem += OnTabControlDrawItem;
+                ApplyScrollBarTheme(tabs, back);
             });
 
             // Tab pages must opt out of visual styles for custom colors.
@@ -197,6 +205,36 @@ namespace SAM.WinForms
             int useDark = dark ? 1 : 0;
             _ = DwmSetWindowAttribute(control.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
             _ = SetWindowTheme(control.Handle, dark ? "DarkMode_Explorer" : "Explorer", null);
+        }
+
+        private static void OnListViewDrawColumnHeader(object? sender, DrawListViewColumnHeaderEventArgs e)
+        {
+            if (sender is not ListView list)
+            {
+                return;
+            }
+
+            using var back = new SolidBrush(list.BackColor);
+            using var fore = new SolidBrush(list.ForeColor);
+            e.Graphics.FillRectangle(back, e.Bounds);
+            var bounds = e.Bounds;
+            bounds.Inflate(-2, 0);
+            StringFormat format = new()
+            {
+                Alignment = StringAlignment.Near,
+                LineAlignment = StringAlignment.Center,
+            };
+            e.Graphics.DrawString(e.Header.Text, list.Font, fore, bounds, format);
+        }
+
+        private static void OnListViewDrawItem(object? sender, DrawListViewItemEventArgs e)
+        {
+            e.DrawDefault = true;
+        }
+
+        private static void OnListViewDrawSubItem(object? sender, DrawListViewSubItemEventArgs e)
+        {
+            e.DrawDefault = true;
         }
 
         private static void OnTabControlDrawItem(object? sender, DrawItemEventArgs e)
