@@ -791,7 +791,8 @@ namespace SAM.Game
 
                 info.ImageIndex = 0;
 
-                this.AddAchievementToIconQueue(info, false);
+                // Queue the icon for download if it's not already available
+                this.QueueAchievementIcon(info, false);
                 this._AchievementListView.Items.Add(item);
             }
 
@@ -849,7 +850,10 @@ namespace SAM.Game
             }
         }
 
-        private void AddAchievementToIconQueue(Stats.AchievementInfo info, bool startDownload)
+        /// <summary>
+        /// Queues an achievement icon for download or loads it from cache if available.
+        /// </summary>
+        private void QueueAchievementIcon(Stats.AchievementInfo info, bool startDownload)
         {
             var key = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked");
             int imageIndex = this._AchievementImageList.Images.IndexOfKey(key);
