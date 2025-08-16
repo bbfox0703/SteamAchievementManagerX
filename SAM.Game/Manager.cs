@@ -1640,9 +1640,17 @@ namespace SAM.Game
                 SetWindowTheme(header, theme, null);
             }
             SetWindowTheme(this._MainTabControl.Handle, theme, null);
+            SetWindowTheme(this._AchievementsTabPage.Handle, theme, null);
+            SetWindowTheme(this._StatisticsTabPage.Handle, theme, null);
             SetWindowTheme(this._MainToolStrip.Handle, theme, null);
             SetWindowTheme(this._AchievementsToolStrip.Handle, theme, null);
             SetWindowTheme(this._StatisticsDataGridView.Handle, theme, null);
+            foreach (Control child in this._StatisticsDataGridView.Controls)
+            {
+                SetWindowTheme(child.Handle, theme, null);
+            }
+            this._StatisticsDataGridView.ControlAdded -= this.OnStatisticsGridControlAdded;
+            this._StatisticsDataGridView.ControlAdded += this.OnStatisticsGridControlAdded;
             SetWindowTheme(this._EnableStatsEditingCheckBox.Handle, theme, null);
 
             if (this._MatchingStringTextBox.Control != null)
@@ -1657,8 +1665,34 @@ namespace SAM.Game
 
             if (this._LanguageComboBox.ComboBox != null)
             {
-                SetWindowTheme(this._LanguageComboBox.ComboBox.Handle, theme, null);
+                if (this._LanguageComboBox.ComboBox.IsHandleCreated)
+                {
+                    SetWindowTheme(this._LanguageComboBox.ComboBox.Handle, theme, null);
+                }
+                else
+                {
+                    this._LanguageComboBox.ComboBox.HandleCreated += this.OnLanguageComboBoxHandleCreated;
+                }
             }
+        }
+
+        private void OnLanguageComboBoxHandleCreated(object? sender, EventArgs e)
+        {
+            if (sender is Control control)
+            {
+                string theme = !this.IsLightTheme() && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)
+                    ? "DarkMode_Explorer"
+                    : "Explorer";
+                SetWindowTheme(control.Handle, theme, null);
+            }
+        }
+
+        private void OnStatisticsGridControlAdded(object? sender, ControlEventArgs e)
+        {
+            string theme = !this.IsLightTheme() && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)
+                ? "DarkMode_Explorer"
+                : "Explorer";
+            SetWindowTheme(e.Control.Handle, theme, null);
         }
 
         private bool IsLightTheme()
