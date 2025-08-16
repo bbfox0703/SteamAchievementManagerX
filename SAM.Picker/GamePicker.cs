@@ -1039,11 +1039,12 @@ namespace SAM.Picker
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
                 {
-                    string idText = nodes.Current?.GetAttribute("id", "");
                     if (nodes.Current == null)
                     {
                         continue;
                     }
+
+                    string idText = nodes.Current.GetAttribute("id", "");
                     if (uint.TryParse(idText, out var id) == false)
                     {
                         continue;
