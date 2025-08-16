@@ -1543,7 +1543,7 @@ namespace SAM.Game
                     else if (bottom) m.Result = (IntPtr)HTBOTTOM;
                     else
                     {
-                        Control child = this.GetChildAtPoint(pt);
+                        Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
                             m.Result = (IntPtr)HTCAPTION;
@@ -1643,7 +1643,7 @@ namespace SAM.Game
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                object value = key?.GetValue("AppsUseLightTheme");
+                object? value = key?.GetValue("AppsUseLightTheme");
                 if (value is int i)
                 {
                     return i != 0;
