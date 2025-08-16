@@ -1671,8 +1671,6 @@ namespace SAM.Game
             this._StatisticsDataGridView.ForeColor = this.ForeColor;
             this._MainTabControl.BackColor = this.BackColor;
             this._MainTabControl.ForeColor = this.ForeColor;
-            this._AchievementListView.BackColor = this.BackColor;
-            this._AchievementListView.ForeColor = this.ForeColor;
 
             this._StatisticsTabPage.BackColor = this.BackColor;
             this._StatisticsTabPage.ForeColor = this.ForeColor;
