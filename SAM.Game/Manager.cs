@@ -1655,6 +1655,8 @@ namespace SAM.Game
                 this.ForeColor = Color.White;
             }
 
+            this._MainTabControl.BackColor = this.BackColor;
+            this._MainTabControl.ForeColor = this.ForeColor;
             this._MainToolStrip.BackColor = this.BackColor;
             this._MainToolStrip.ForeColor = this.ForeColor;
             this._CloseButton.BackColor = this.BackColor;
@@ -1669,6 +1671,34 @@ namespace SAM.Game
             this._StatisticsDataGridView.ForeColor = this.ForeColor;
             this._MainTabControl.BackColor = this.BackColor;
             this._MainTabControl.ForeColor = this.ForeColor;
+            this._AchievementListView.BackColor = this.BackColor;
+            this._AchievementListView.ForeColor = this.ForeColor;
+
+            this._StatisticsTabPage.BackColor = this.BackColor;
+            this._StatisticsTabPage.ForeColor = this.ForeColor;
+            this._AchievementsTabPage.BackColor = this.BackColor;
+            this._AchievementsTabPage.ForeColor = this.ForeColor;
+            this._EnableStatsEditingCheckBox.BackColor = this.BackColor;
+            this._EnableStatsEditingCheckBox.ForeColor = this.ForeColor;
+            this._LanguageComboBox.BackColor = this.BackColor;
+            this._LanguageComboBox.ForeColor = this.ForeColor;
+            this._MatchingStringTextBox.BackColor = this.BackColor;
+            this._MatchingStringTextBox.ForeColor = this.ForeColor;
+            this._AddTimerTextBox.BackColor = this.BackColor;
+            this._AddTimerTextBox.ForeColor = this.ForeColor;
+
+
+            for (int i = 0; i < this._StatisticsDataGridView.ColumnCount; i++)
+            {
+                this._StatisticsDataGridView.Columns[i].DefaultCellStyle.BackColor = this.BackColor;
+                this._StatisticsDataGridView.Columns[i].DefaultCellStyle.ForeColor = this.ForeColor;
+            }
+            //this._StatisticsDataGridView.Columns[0].DefaultCellStyle.BackColor = this.BackColor;
+            //this._StatisticsDataGridView.Columns[0].DefaultCellStyle.ForeColor = this.ForeColor;
+            //this._StatisticsDataGridView.Columns[1].DefaultCellStyle.BackColor = this.BackColor;
+            //this._StatisticsDataGridView.Columns[1].DefaultCellStyle.ForeColor = this.ForeColor;
+            //this._StatisticsDataGridView.Columns[2].DefaultCellStyle.BackColor = this.BackColor;
+            //this._StatisticsDataGridView.Columns[2].DefaultCellStyle.ForeColor = this.ForeColor;
 
             this.Invalidate();
         }

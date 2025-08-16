@@ -413,11 +413,11 @@
             // 
             _StatisticsTabPage.Controls.Add(_EnableStatsEditingCheckBox);
             _StatisticsTabPage.Controls.Add(_StatisticsDataGridView);
-            _StatisticsTabPage.Location = new System.Drawing.Point(4, 35);
+            _StatisticsTabPage.Location = new System.Drawing.Point(4, 36);
             _StatisticsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
             _StatisticsTabPage.Name = "_StatisticsTabPage";
             _StatisticsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            _StatisticsTabPage.Size = new System.Drawing.Size(1733, 630);
+            _StatisticsTabPage.Size = new System.Drawing.Size(1733, 629);
             _StatisticsTabPage.TabIndex = 1;
             _StatisticsTabPage.Text = "Statistics";
             _StatisticsTabPage.UseVisualStyleBackColor = true;
@@ -426,7 +426,7 @@
             // 
             _EnableStatsEditingCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             _EnableStatsEditingCheckBox.AutoSize = true;
-            _EnableStatsEditingCheckBox.Location = new System.Drawing.Point(14, 572);
+            _EnableStatsEditingCheckBox.Location = new System.Drawing.Point(14, 563);
             _EnableStatsEditingCheckBox.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
             _EnableStatsEditingCheckBox.Name = "_EnableStatsEditingCheckBox";
             _EnableStatsEditingCheckBox.Size = new System.Drawing.Size(1112, 31);
@@ -445,7 +445,7 @@
             _StatisticsDataGridView.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
             _StatisticsDataGridView.Name = "_StatisticsDataGridView";
             _StatisticsDataGridView.RowHeadersWidth = 72;
-            _StatisticsDataGridView.Size = new System.Drawing.Size(1391, 546);
+            _StatisticsDataGridView.Size = new System.Drawing.Size(1391, 537);
             _StatisticsDataGridView.TabIndex = 0;
             _StatisticsDataGridView.CellEndEdit += OnStatCellEndEdit;
             _StatisticsDataGridView.DataError += OnStatDataError;
