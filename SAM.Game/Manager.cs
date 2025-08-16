@@ -33,7 +33,9 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using SAM.WinForms;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 using static SAM.Game.InvariantShorthand;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using APITypes = SAM.API.Types;
@@ -55,21 +57,50 @@ namespace SAM.Game
         private const int MaxIconDimension = 1024; // px
         private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private readonly List<Stats.AchievementInfo> _IconQueue = new();
-        private readonly List<Stats.StatDefinition> _StatDefinitions = new();
+        private readonly List<Stats.AchievementInfo> _iconQueue = new();
+        private readonly List<Stats.StatDefinition> _statDefinitions = new();
 
-        private readonly List<Stats.AchievementDefinition> _AchievementDefinitions = new();
+        private readonly List<Stats.AchievementDefinition> _achievementDefinitions = new();
 
-        private readonly BindingList<Stats.StatInfo> _Statistics = new();
+        private readonly BindingList<Stats.StatInfo> _statistics = new();
 
-        private readonly API.Callbacks.UserStatsReceived _UserStatsReceivedCallback;
+        private readonly API.Callbacks.UserStatsReceived _userStatsReceivedCallback;
 
         //private API.Callback<APITypes.UserStatsStored> UserStatsStoredCallback;
         // *****************************************************************
-        private Dictionary<string, int> achievementCounters = new Dictionary<string, int>();
+        private Dictionary<string, int> _achievementCounters = new();
 
         private bool _moveRight = true;
         private POINT _lastMousePos;
+
+        private Color _BorderColor;
+
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_PAINT = 0x000F;
+        private const int HTCLIENT = 1;
+        private const int HTCAPTION = 2;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+        private const int WM_SETTINGCHANGE = 0x001A;
+        private const int WM_THEMECHANGED = 0x031A;
+        private const int WM_NCRBUTTONUP = 0x00A5;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int WM_SYSCOMMAND = 0x0112;
+        private const int TPM_LEFTBUTTON = 0x0000;
+        private const int TPM_RIGHTBUTTON = 0x0002;
+        private const int TPM_RETURNCMD = 0x0100;
+
+        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMSBT_MAINWINDOW = 2;
+        private const int DWMWCP_ROUND = 2;
 
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int X, int Y);
@@ -98,10 +129,52 @@ namespace SAM.Game
             public int X;
             public int Y;
         }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll")]
+        private static extern int TrackPopupMenuEx(IntPtr hmenu, int fuFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int WS_MINIMIZEBOX = 0x20000;
+                const int WS_MAXIMIZEBOX = 0x10000;
+                const int WS_SYSMENU = 0x80000;
+                const int WS_THICKFRAME = 0x40000;
+                const int CS_DBLCLKS = 0x8;
+                var cp = base.CreateParams;
+                cp.Style |= WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_THICKFRAME;
+                cp.ClassStyle |= CS_DBLCLKS;
+                return cp;
+            }
+        }
         // *****************************************************************
         public Manager(long gameId, API.Client client)
         {
             this.InitializeComponent();
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            this._MainToolStrip.MouseDown += this.OnDragWindow;
+            this._AchievementsToolStrip.MouseDown += this.OnDragWindow;
+            this._MainStatusStrip.MouseDown += this.OnDragWindow;
 
             this._MainTabControl.SelectedTab = this._AchievementsTabPage;
             //this.statisticsList.Enabled = this.checkBox1.Checked;
@@ -127,7 +200,7 @@ namespace SAM.Game
 
             this._StatisticsDataGridView.DataSource = new BindingSource()
             {
-                DataSource = this._Statistics,
+                DataSource = this._statistics,
             };
 
             this._GameId = gameId;
@@ -137,7 +210,12 @@ namespace SAM.Game
             {
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            this.FormClosed += (_, _) => this._HttpClient.Dispose();
+            this.FormClosed += (_, _) =>
+            {
+                this._HttpClient.Dispose();
+                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
+            };
+            SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
 
             this._IconCacheDirectory = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
@@ -163,13 +241,15 @@ namespace SAM.Game
                 base.Text += " | " + this._GameId.ToString(CultureInfo.InvariantCulture);
             }
 
-            this._UserStatsReceivedCallback = client.CreateAndRegisterCallback<API.Callbacks.UserStatsReceived>();
-            this._UserStatsReceivedCallback.OnRun += this.OnUserStatsReceived;
+            this._userStatsReceivedCallback = client.CreateAndRegisterCallback<API.Callbacks.UserStatsReceived>();
+            this._userStatsReceivedCallback.OnRun += this.OnUserStatsReceived;
 
             //this.UserStatsStoredCallback = new API.Callback(1102, new API.Callback.CallbackFunction(this.OnUserStatsStored));
 
             this.RefreshStats();
             this.UpdateButtonText();
+
+            this.UpdateColors();
         }
 
         private string? GetAchievementCachePath(Stats.AchievementInfo info)
@@ -215,17 +295,17 @@ namespace SAM.Game
 
         private async void DownloadNextIcon()
         {
-            if (this._IconQueue.Count == 0)
+            if (this._iconQueue.Count == 0)
             {
                 this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._IconQueue.Count} icons...";
+            this._DownloadStatusLabel.Text = $"Downloading {this._iconQueue.Count} icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            var info = this._IconQueue[0];
-            this._IconQueue.RemoveAt(0);
+            var info = this._iconQueue[0];
+            this._iconQueue.RemoveAt(0);
 
             Bitmap? bitmap = null;
             try
@@ -407,8 +487,8 @@ namespace SAM.Game
                 currentLanguage = _LanguageComboBox.Text;
             }
 
-            this._AchievementDefinitions.Clear();
-            this._StatDefinitions.Clear();
+            this._achievementDefinitions.Clear();
+            this._statDefinitions.Clear();
 
             var stats = kv[this._GameId.ToString(CultureInfo.InvariantCulture)]["stats"];
             if (stats.Valid == false || stats.Children == null)
@@ -439,7 +519,7 @@ namespace SAM.Game
                         var id = stat["name"].AsString("");
                         string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
 
-                        this._StatDefinitions.Add(new Stats.IntegerStatDefinition()
+                        this._statDefinitions.Add(new Stats.IntegerStatDefinition()
                         {
                             Id = stat["name"].AsString(""),
                             DisplayName = name,
@@ -460,7 +540,7 @@ namespace SAM.Game
                         var id = stat["name"].AsString("");
                         string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
 
-                        this._StatDefinitions.Add(new Stats.FloatStatDefinition()
+                        this._statDefinitions.Add(new Stats.FloatStatDefinition()
                         {
                             Id = stat["name"].AsString(""),
                             DisplayName = name,
@@ -494,7 +574,7 @@ namespace SAM.Game
                                     string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
                                     string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
 
-                                    this._AchievementDefinitions.Add(new()
+                                    this._achievementDefinitions.Add(new()
                                     {
                                         Id = id,
                                         Name = name,
@@ -569,12 +649,12 @@ namespace SAM.Game
                 return;
             }
 
-            // Synchronize ListView with achievementCounters
+            // Synchronize ListView with _achievementCounters
             foreach (ListViewItem item in _AchievementListView.Items)
             {
                 string key = item.SubItems[3].Text; // 3rd column is Key
 
-                if (achievementCounters.TryGetValue(key, out int counter))
+                if (_achievementCounters.TryGetValue(key, out int counter))
                 {
                     item.SubItems[4].Text = counter.ToString(); // Update the Counter column
                 }
@@ -620,8 +700,9 @@ namespace SAM.Game
 
             bool wantLocked = this._DisplayLockedOnlyButton.Checked == true;
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
+            bool light = this.IsLightTheme();
 
-            foreach (var def in this._AchievementDefinitions)
+            foreach (var def in this._achievementDefinitions)
             {
                 if (string.IsNullOrEmpty(def.Id) == true)
                 {
@@ -674,7 +755,12 @@ namespace SAM.Game
                     Checked = isAchieved,
                     Tag = info,
                     Text = info.Name,
-                    BackColor = (def.Permission & 3) == 0 ? Color.Black : Color.FromArgb(64, 0, 0),
+                    BackColor = (def.Permission & 3) == 0
+                        ? this.BackColor
+                        : (light
+                            ? ControlPaint.Light(this.BackColor)
+                            : ControlPaint.Dark(this.BackColor)),
+                    ForeColor = this.ForeColor,
                 };
 
                 info.Item = item;
@@ -698,9 +784,16 @@ namespace SAM.Game
                 item.SubItems.Add("-1");
                 //----------------
 
+                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                {
+                    subItem.BackColor = item.BackColor;
+                    subItem.ForeColor = item.ForeColor;
+                }
+
                 info.ImageIndex = 0;
 
-                this.AddAchievementToIconQueue(info, false);
+                // Queue the icon for download if it's not already available
+                this.QueueAchievementIcon(info, false);
                 this._AchievementListView.Items.Add(item);
             }
 
@@ -715,8 +808,8 @@ namespace SAM.Game
 
         private void GetStatistics()
         {
-            this._Statistics.Clear();
-            foreach (var stat in this._StatDefinitions)
+            this._statistics.Clear();
+            foreach (var stat in this._statDefinitions)
             {
                 if (string.IsNullOrEmpty(stat.Id) == true)
                 {
@@ -729,7 +822,7 @@ namespace SAM.Game
                     {
                         continue;
                     }
-                    this._Statistics.Add(new Stats.IntStatInfo()
+                    this._statistics.Add(new Stats.IntStatInfo()
                     {
                         Id = intStat.Id,
                         DisplayName = intStat.DisplayName,
@@ -745,7 +838,7 @@ namespace SAM.Game
                     {
                         continue;
                     }
-                    this._Statistics.Add(new Stats.FloatStatInfo()
+                    this._statistics.Add(new Stats.FloatStatInfo()
                     {
                         Id = floatStat.Id,
                         DisplayName = floatStat.DisplayName,
@@ -758,7 +851,10 @@ namespace SAM.Game
             }
         }
 
-        private void AddAchievementToIconQueue(Stats.AchievementInfo info, bool startDownload)
+        /// <summary>
+        /// Queues an achievement icon for download or loads it from cache if available.
+        /// </summary>
+        private void QueueAchievementIcon(Stats.AchievementInfo info, bool startDownload)
         {
             var key = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked");
             int imageIndex = this._AchievementImageList.Images.IndexOfKey(key);
@@ -819,7 +915,7 @@ namespace SAM.Game
                 }
             }
 
-            this._IconQueue.Add(info);
+            this._iconQueue.Add(info);
 
             if (startDownload == true)
             {
@@ -874,12 +970,12 @@ namespace SAM.Game
 
         private int StoreStatistics(bool silent = false)
         {
-            if (this._Statistics.Count == 0)
+            if (this._statistics.Count == 0)
             {
                 return 0;
             }
 
-            var statistics = this._Statistics.Where(stat => stat.IsModified == true).ToList();
+            var statistics = this._statistics.Where(stat => stat.IsModified == true).ToList();
             if (statistics.Count == 0)
             {
                 return 0;
@@ -1167,7 +1263,7 @@ namespace SAM.Game
             this.GetAchievements();
         }
 
-        private void _TimeNowtimer_Tick(object sender, EventArgs e)
+        private void _timeNowTimer_Tick(object sender, EventArgs e)
         {
             _TimeNowLabel.Text = "   Cur. Time: " + DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
         }
@@ -1210,7 +1306,7 @@ namespace SAM.Game
         private void _TimerSwitchButton_Click(object sender, EventArgs e)
         {
             // Toggle the timer's Enabled state
-            _SumbitAchievementsTimer.Enabled = !_SumbitAchievementsTimer.Enabled;
+            _submitAchievementsTimer.Enabled = !_submitAchievementsTimer.Enabled;
 
             // Update the button's text to reflect the new state
             UpdateButtonText();
@@ -1238,7 +1334,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = timerValue.ToString(); // Fifth column (Display Index 4)
 
                 string key = item.SubItems[3].Text;
-                achievementCounters[key] = timerValue; // Store value for refresh
+                _achievementCounters[key] = timerValue; // Store value for refresh
             }
 
             //MessageBox.Show("Selected rows have been successfully updated!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1247,7 +1343,7 @@ namespace SAM.Game
         private void UpdateButtonText()
         {
             // Change the button's text based on the timer's current state
-            if (_SumbitAchievementsTimer.Enabled)
+            if (_submitAchievementsTimer.Enabled)
             {
                 _TimerSwitchButton.Text = "Disable Timer";
             }
@@ -1272,7 +1368,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = counter.ToString();
 
                 // Update the Dictionary
-                achievementCounters[key] = counter;
+                _achievementCounters[key] = counter;
 
                 // If the counter becomes 0, check the row and set the flag
                 if (counter == 0)
@@ -1281,12 +1377,12 @@ namespace SAM.Game
                     shouldTriggerStore = true; // Set the flag to trigger the store action
 
                     item.SubItems[4].Text = "-1000";
-                    achievementCounters[key] = -1; // Update the dictionary as well
+                    _achievementCounters[key] = -1; // Update the dictionary as well
                 }
             }
         }
 
-        private void _SumbitAchievementsTimer_Tick(object sender, EventArgs e)
+        private void _submitAchievementsTimer_Tick(object sender, EventArgs e)
         {
             bool shouldTriggerStore = false; // Flag to determine if we need to trigger the commit button
             int seconds = DateTime.Now.Second;
@@ -1396,6 +1492,200 @@ namespace SAM.Game
                 _AchievementListView.EndUpdate();
             }
         }
+
+        private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (this.IsHandleCreated)
+            {
+                this.BeginInvoke(new MethodInvoker(() =>
+                {
+                    this.UpdateColors();
+                    this.TryApplyMica();
+                }));
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            this.TryApplyMica();
+            this.ApplyRoundedCorners();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            this.ApplyRoundedCorners();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_NCHITTEST)
+            {
+                base.WndProc(ref m);
+                if ((int)m.Result == HTCLIENT)
+                {
+                    int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                    int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                    Point pt = this.PointToClient(new Point(x, y));
+                    const int grip = 8;
+                    bool top = pt.Y < grip;
+                    bool left = pt.X < grip;
+                    bool right = pt.X >= this.ClientSize.Width - grip;
+                    bool bottom = pt.Y >= this.ClientSize.Height - grip;
+
+                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HTTOP;
+                    else if (left) m.Result = (IntPtr)HTLEFT;
+                    else if (right) m.Result = (IntPtr)HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    else
+                    {
+                        Control? child = this.GetChildAtPoint(pt);
+                        if (child == null)
+                        {
+                            m.Result = (IntPtr)HTCAPTION;
+                        }
+                    }
+                }
+                return;
+            }
+            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            {
+                int x = (short)(m.LParam.ToInt32() & 0xFFFF);
+                int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
+                this.ShowSystemMenu(new Point(x, y));
+                return;
+            }
+
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_PAINT)
+            {
+                using var g = Graphics.FromHwnd(this.Handle);
+                using var pen = new Pen(this._BorderColor);
+                g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
+            }
+            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            {
+                this.UpdateColors();
+                this.TryApplyMica();
+            }
+        }
+
+        private void OnDragWindow(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if ((ReferenceEquals(sender, this._MainToolStrip) && this._MainToolStrip.GetItemAt(e.Location) != null) ||
+                    (ReferenceEquals(sender, this._AchievementsToolStrip) && this._AchievementsToolStrip.GetItemAt(e.Location) != null))
+                {
+                    return;
+                }
+                ReleaseCapture();
+                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                Point screen = ((Control)sender!).PointToScreen(e.Location);
+                this.ShowSystemMenu(screen);
+            }
+        }
+
+        private void ShowSystemMenu(Point screenPoint)
+        {
+            IntPtr hMenu = GetSystemMenu(this.Handle, false);
+            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            if (command != 0)
+            {
+                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+            }
+        }
+
+        private void OnCloseButtonClick(object? sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void TryApplyMica()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
+            {
+                return;
+            }
+
+            int backdrop = DWMSBT_MAINWINDOW;
+            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+
+            int dark = this.IsLightTheme() ? 0 : 1;
+            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+        }
+
+        private void ApplyRoundedCorners()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
+                int pref = DWMWCP_ROUND;
+                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+            }
+            else
+            {
+                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
+                this.Region = Region.FromHrgn(rgn);
+                DeleteObject(rgn);
+            }
+        }
+
+        private bool IsLightTheme()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+                object? value = key?.GetValue("AppsUseLightTheme");
+                if (value is int i)
+                {
+                    return i != 0;
+                }
+            }
+            catch
+            {
+            }
+            return true;
+        }
+
+        private void UpdateColors()
+        {
+            bool light = this.IsLightTheme();
+            if (light)
+            {
+                this._BorderColor = Color.FromArgb(200, 200, 200);
+                this.BackColor = Color.White;
+                this.ForeColor = Color.Black;
+            }
+            else
+            {
+                this._BorderColor = Color.FromArgb(50, 50, 50);
+                this.BackColor = Color.FromArgb(32, 32, 32);
+                this.ForeColor = Color.White;
+            }
+
+            ThemeHelper.ApplyTheme(this, this.BackColor, this.ForeColor);
+
+            Color restrictedBack = light
+                ? ControlPaint.Light(this._AchievementListView.BackColor)
+                : ControlPaint.Dark(this._AchievementListView.BackColor);
+            foreach (ListViewItem item in this._AchievementListView.Items)
+            {
+                bool restricted = item.Tag is Stats.AchievementInfo info && (info.Permission & 3) != 0;
+                Color itemBack = restricted ? restrictedBack : this._AchievementListView.BackColor;
+                ThemeHelper.ApplyTheme(item, itemBack, this._AchievementListView.ForeColor);
+            }
+
+            this.Invalidate();
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -1419,10 +1709,15 @@ namespace SAM.Game
                 this.order = order;
             }
 
-            public int Compare(object x, object y)
+            public int Compare(object? x, object? y)
             {
-                var s1 = ((ListViewItem)x).SubItems[col].Text;
-                var s2 = ((ListViewItem)y).SubItems[col].Text;
+                if (x is not ListViewItem itemX || y is not ListViewItem itemY)
+                {
+                    return 0;
+                }
+
+                var s1 = itemX.SubItems[col].Text;
+                var s2 = itemY.SubItems[col].Text;
 
                 int result;
 

@@ -131,8 +131,7 @@ namespace SAM.Game
                     return;
                 }
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
+                ApplicationConfiguration.Initialize();
                 Application.Run(new Manager(appId, client));
             }
         }

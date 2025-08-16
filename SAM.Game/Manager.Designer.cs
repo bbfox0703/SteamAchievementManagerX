@@ -15,62 +15,63 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            components = new System.ComponentModel.Container();
             System.Windows.Forms.ToolStripSeparator _ToolStripSeparator1;
             System.Windows.Forms.ToolStripSeparator _ToolStripSeparator2;
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Manager));
-            this._MainToolStrip = new System.Windows.Forms.ToolStrip();
-            this._StoreButton = new System.Windows.Forms.ToolStripButton();
-            this._ReloadButton = new System.Windows.Forms.ToolStripButton();
-            this._ResetButton = new System.Windows.Forms.ToolStripButton();
-            this._TimeNowLabel = new System.Windows.Forms.ToolStripLabel();
-            this._TimerLabel = new System.Windows.Forms.ToolStripLabel();
-            this._autoMouseMoveButton = new System.Windows.Forms.ToolStripButton();
-            this._AchievementImageList = new System.Windows.Forms.ImageList(this.components);
-            this._MainStatusStrip = new System.Windows.Forms.StatusStrip();
-            this._CountryStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this._GameStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this._DownloadStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this._CallbackTimer = new System.Windows.Forms.Timer(this.components);
-            this._MainTabControl = new System.Windows.Forms.TabControl();
-            this._AchievementsTabPage = new System.Windows.Forms.TabPage();
-            this._AchievementListView = new SAM.Game.DoubleBufferedListView();
-            this._AchievementNameColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this._AchievementDescriptionColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this._AchievementUnlockTimeColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this._AchievementIDColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this._AchievementTimerColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this._AchievementsToolStrip = new System.Windows.Forms.ToolStrip();
-            this._LockAllButton = new System.Windows.Forms.ToolStripButton();
-            this._InvertAllButton = new System.Windows.Forms.ToolStripButton();
-            this._UnlockAllButton = new System.Windows.Forms.ToolStripButton();
-            this._DisplayLabel = new System.Windows.Forms.ToolStripLabel();
-            this._DisplayLockedOnlyButton = new System.Windows.Forms.ToolStripButton();
-            this._DisplayUnlockedOnlyButton = new System.Windows.Forms.ToolStripButton();
-            this._MatchingStringLabel = new System.Windows.Forms.ToolStripLabel();
-            this._MatchingStringTextBox = new System.Windows.Forms.ToolStripTextBox();
-            this._LanguageLabel = new System.Windows.Forms.ToolStripLabel();
-            this._LanguageComboBox = new System.Windows.Forms.ToolStripComboBox();
-            this.AddTimerLabel = new System.Windows.Forms.ToolStripLabel();
-            this._AddTimerTextBox = new System.Windows.Forms.ToolStripTextBox();
-            this._AddTimerButton = new System.Windows.Forms.ToolStripButton();
-            this._TimerSwitchButton = new System.Windows.Forms.ToolStripButton();
-            this._StatisticsTabPage = new System.Windows.Forms.TabPage();
-            this._EnableStatsEditingCheckBox = new System.Windows.Forms.CheckBox();
-            this._StatisticsDataGridView = new System.Windows.Forms.DataGridView();
-            this._TimeNowtimer = new System.Windows.Forms.Timer(this.components);
-            this._SumbitAchievementsTimer = new System.Windows.Forms.Timer(this.components);
-            this._idleTimer = new System.Windows.Forms.Timer(this.components);
+            _MainToolStrip = new System.Windows.Forms.ToolStrip();
+            _ReloadButton = new System.Windows.Forms.ToolStripButton();
+            _ResetButton = new System.Windows.Forms.ToolStripButton();
+            _TimeNowLabel = new System.Windows.Forms.ToolStripLabel();
+            _TimerLabel = new System.Windows.Forms.ToolStripLabel();
+            _CloseButton = new System.Windows.Forms.ToolStripButton();
+            _StoreButton = new System.Windows.Forms.ToolStripButton();
+            _autoMouseMoveButton = new System.Windows.Forms.ToolStripButton();
+            _AchievementImageList = new System.Windows.Forms.ImageList(components);
+            _MainStatusStrip = new System.Windows.Forms.StatusStrip();
+            _CountryStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            _GameStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            _DownloadStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            _CallbackTimer = new System.Windows.Forms.Timer(components);
+            _MainTabControl = new System.Windows.Forms.TabControl();
+            _AchievementsTabPage = new System.Windows.Forms.TabPage();
+            _AchievementListView = new DoubleBufferedListView();
+            _AchievementNameColumnHeader = new System.Windows.Forms.ColumnHeader();
+            _AchievementDescriptionColumnHeader = new System.Windows.Forms.ColumnHeader();
+            _AchievementUnlockTimeColumnHeader = new System.Windows.Forms.ColumnHeader();
+            _AchievementIDColumnHeader = new System.Windows.Forms.ColumnHeader();
+            _AchievementTimerColumnHeader = new System.Windows.Forms.ColumnHeader();
+            _AchievementsToolStrip = new System.Windows.Forms.ToolStrip();
+            _LockAllButton = new System.Windows.Forms.ToolStripButton();
+            _InvertAllButton = new System.Windows.Forms.ToolStripButton();
+            _UnlockAllButton = new System.Windows.Forms.ToolStripButton();
+            _DisplayLabel = new System.Windows.Forms.ToolStripLabel();
+            _DisplayLockedOnlyButton = new System.Windows.Forms.ToolStripButton();
+            _DisplayUnlockedOnlyButton = new System.Windows.Forms.ToolStripButton();
+            _MatchingStringLabel = new System.Windows.Forms.ToolStripLabel();
+            _MatchingStringTextBox = new System.Windows.Forms.ToolStripTextBox();
+            _LanguageLabel = new System.Windows.Forms.ToolStripLabel();
+            _LanguageComboBox = new System.Windows.Forms.ToolStripComboBox();
+            AddTimerLabel = new System.Windows.Forms.ToolStripLabel();
+            _AddTimerTextBox = new System.Windows.Forms.ToolStripTextBox();
+            _AddTimerButton = new System.Windows.Forms.ToolStripButton();
+            _TimerSwitchButton = new System.Windows.Forms.ToolStripButton();
+            _StatisticsTabPage = new System.Windows.Forms.TabPage();
+            _EnableStatsEditingCheckBox = new System.Windows.Forms.CheckBox();
+            _StatisticsDataGridView = new System.Windows.Forms.DataGridView();
+            _timeNowTimer = new System.Windows.Forms.Timer(components);
+            _submitAchievementsTimer = new System.Windows.Forms.Timer(components);
+            _idleTimer = new System.Windows.Forms.Timer(components);
             _ToolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             _ToolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            this._MainToolStrip.SuspendLayout();
-            this._MainStatusStrip.SuspendLayout();
-            this._MainTabControl.SuspendLayout();
-            this._AchievementsTabPage.SuspendLayout();
-            this._AchievementsToolStrip.SuspendLayout();
-            this._StatisticsTabPage.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this._StatisticsDataGridView)).BeginInit();
-            this.SuspendLayout();
+            _MainToolStrip.SuspendLayout();
+            _MainStatusStrip.SuspendLayout();
+            _MainTabControl.SuspendLayout();
+            _AchievementsTabPage.SuspendLayout();
+            _AchievementsToolStrip.SuspendLayout();
+            _StatisticsTabPage.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)_StatisticsDataGridView).BeginInit();
+            SuspendLayout();
             // 
             // _ToolStripSeparator1
             // 
@@ -84,472 +85,413 @@
             // 
             // _MainToolStrip
             // 
-            this._MainToolStrip.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this._MainToolStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
-            this._MainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this._StoreButton,
-            this._ReloadButton,
-            this._ResetButton,
-            this._TimeNowLabel,
-            this._TimerLabel,
-            this._autoMouseMoveButton});
-            this._MainToolStrip.Location = new System.Drawing.Point(0, 0);
-            this._MainToolStrip.Name = "_MainToolStrip";
-            this._MainToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
-            this._MainToolStrip.Size = new System.Drawing.Size(1778, 45);
-            this._MainToolStrip.TabIndex = 1;
-            // 
-            // _StoreButton
-            // 
-            this._StoreButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this._StoreButton.Enabled = false;
-            this._StoreButton.Image = global::SAM.Game.Resources.Save;
-            this._StoreButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._StoreButton.Name = "_StoreButton";
-            this._StoreButton.Size = new System.Drawing.Size(265, 39);
-            this._StoreButton.Text = "Commit Changes";
-            this._StoreButton.ToolTipText = "Store achievements and statistics for active game.";
-            this._StoreButton.Click += new System.EventHandler(this.OnStore);
+            _MainToolStrip.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            _MainToolStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
+            _MainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { _ReloadButton, _ResetButton, _TimeNowLabel, _TimerLabel, _CloseButton, _StoreButton, _autoMouseMoveButton });
+            _MainToolStrip.Location = new System.Drawing.Point(0, 0);
+            _MainToolStrip.Name = "_MainToolStrip";
+            _MainToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
+            _MainToolStrip.Size = new System.Drawing.Size(1778, 45);
+            _MainToolStrip.TabIndex = 1;
             // 
             // _ReloadButton
             // 
-            this._ReloadButton.Enabled = false;
-            this._ReloadButton.Image = global::SAM.Game.Resources.Refresh;
-            this._ReloadButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._ReloadButton.Name = "_ReloadButton";
-            this._ReloadButton.Size = new System.Drawing.Size(141, 39);
-            this._ReloadButton.Text = "Refresh";
-            this._ReloadButton.ToolTipText = "Refresh achievements and statistics for active game.";
-            this._ReloadButton.Click += new System.EventHandler(this.OnRefresh);
+            _ReloadButton.Enabled = false;
+            _ReloadButton.Image = Resources.RefreshN;
+            _ReloadButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _ReloadButton.Name = "_ReloadButton";
+            _ReloadButton.Size = new System.Drawing.Size(141, 39);
+            _ReloadButton.Text = "Refresh";
+            _ReloadButton.ToolTipText = "Refresh achievements and statistics for active game.";
+            _ReloadButton.Click += OnRefresh;
             // 
             // _ResetButton
             // 
-            this._ResetButton.Image = global::SAM.Game.Resources.Reset;
-            this._ResetButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._ResetButton.Name = "_ResetButton";
-            this._ResetButton.Size = new System.Drawing.Size(116, 39);
-            this._ResetButton.Text = "Reset";
-            this._ResetButton.ToolTipText = "Reset achievements and/or statistics for active game.";
-            this._ResetButton.Click += new System.EventHandler(this.OnResetAllStats);
+            _ResetButton.Image = Resources.cancel;
+            _ResetButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _ResetButton.Name = "_ResetButton";
+            _ResetButton.Size = new System.Drawing.Size(116, 39);
+            _ResetButton.Text = "Reset";
+            _ResetButton.ToolTipText = "Reset achievements and/or statistics for active game.";
+            _ResetButton.Click += OnResetAllStats;
             // 
             // _TimeNowLabel
             // 
-            this._TimeNowLabel.Name = "_TimeNowLabel";
-            this._TimeNowLabel.Size = new System.Drawing.Size(299, 39);
-            this._TimeNowLabel.Text = "Time: ____/__/__ __:__:__";
+            _TimeNowLabel.Image = (System.Drawing.Image)resources.GetObject("_TimeNowLabel.Image");
+            _TimeNowLabel.Name = "_TimeNowLabel";
+            _TimeNowLabel.Size = new System.Drawing.Size(327, 39);
+            _TimeNowLabel.Text = "Time: ____/__/__ __:__:__";
             // 
             // _TimerLabel
             // 
-            this._TimerLabel.Name = "_TimerLabel";
-            this._TimerLabel.Size = new System.Drawing.Size(27, 39);
-            this._TimerLabel.Text = "-";
+            _TimerLabel.Name = "_TimerLabel";
+            _TimerLabel.Size = new System.Drawing.Size(27, 39);
+            _TimerLabel.Text = "-";
+            // 
+            // _CloseButton
+            // 
+            _CloseButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            _CloseButton.AutoSize = false;
+            _CloseButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            _CloseButton.Image = Resources.cross;
+            _CloseButton.Name = "_CloseButton";
+            _CloseButton.Size = new System.Drawing.Size(45, 39);
+            _CloseButton.Text = "X";
+            _CloseButton.Click += OnCloseButtonClick;
+            // 
+            // _StoreButton
+            // 
+            _StoreButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            _StoreButton.Enabled = false;
+            _StoreButton.Image = Resources.cloud_computing;
+            _StoreButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _StoreButton.Name = "_StoreButton";
+            _StoreButton.Size = new System.Drawing.Size(265, 39);
+            _StoreButton.Text = "Commit Changes";
+            _StoreButton.ToolTipText = "Store achievements and statistics for active game.";
+            _StoreButton.Click += OnStore;
             // 
             // _autoMouseMoveButton
             // 
-            this._autoMouseMoveButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this._autoMouseMoveButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._autoMouseMoveButton.Image = ((System.Drawing.Image)(resources.GetObject("_autoMouseMoveButton.Image")));
-            this._autoMouseMoveButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._autoMouseMoveButton.Name = "_autoMouseMoveButton";
-            this._autoMouseMoveButton.Size = new System.Drawing.Size(320, 39);
-            this._autoMouseMoveButton.Text = "Start Auto Mouse Move";
-            this._autoMouseMoveButton.ToolTipText = "Auto mouse movement/every 60 seconds when program in foreground";
-            this._autoMouseMoveButton.Click += new System.EventHandler(this._autoMouseMoveButton_Click);
+            _autoMouseMoveButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            _autoMouseMoveButton.Image = Resources.cursor;
+            _autoMouseMoveButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _autoMouseMoveButton.Name = "_autoMouseMoveButton";
+            _autoMouseMoveButton.Size = new System.Drawing.Size(348, 39);
+            _autoMouseMoveButton.Text = "Start Auto Mouse Move";
+            _autoMouseMoveButton.ToolTipText = "Auto mouse movement/every 60 seconds when program in foreground";
+            _autoMouseMoveButton.Click += _autoMouseMoveButton_Click;
             // 
             // _AchievementImageList
             // 
-            this._AchievementImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth24Bit;
-            this._AchievementImageList.ImageSize = new System.Drawing.Size(64, 64);
-            this._AchievementImageList.TransparentColor = System.Drawing.Color.Transparent;
+            _AchievementImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth24Bit;
+            _AchievementImageList.ImageSize = new System.Drawing.Size(64, 64);
+            _AchievementImageList.TransparentColor = System.Drawing.Color.Transparent;
             // 
             // _MainStatusStrip
             // 
-            this._MainStatusStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
-            this._MainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this._CountryStatusLabel,
-            this._GameStatusLabel,
-            this._DownloadStatusLabel});
-            this._MainStatusStrip.Location = new System.Drawing.Point(0, 762);
-            this._MainStatusStrip.Name = "_MainStatusStrip";
-            this._MainStatusStrip.Padding = new System.Windows.Forms.Padding(3, 0, 33, 0);
-            this._MainStatusStrip.Size = new System.Drawing.Size(1778, 22);
-            this._MainStatusStrip.TabIndex = 4;
+            _MainStatusStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
+            _MainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { _CountryStatusLabel, _GameStatusLabel, _DownloadStatusLabel });
+            _MainStatusStrip.Location = new System.Drawing.Point(0, 762);
+            _MainStatusStrip.Name = "_MainStatusStrip";
+            _MainStatusStrip.Padding = new System.Windows.Forms.Padding(3, 0, 33, 0);
+            _MainStatusStrip.Size = new System.Drawing.Size(1778, 22);
+            _MainStatusStrip.TabIndex = 4;
             // 
             // _CountryStatusLabel
             // 
-            this._CountryStatusLabel.Name = "_CountryStatusLabel";
-            this._CountryStatusLabel.Size = new System.Drawing.Size(0, 13);
+            _CountryStatusLabel.Name = "_CountryStatusLabel";
+            _CountryStatusLabel.Size = new System.Drawing.Size(0, 13);
             // 
             // _GameStatusLabel
             // 
-            this._GameStatusLabel.Name = "_GameStatusLabel";
-            this._GameStatusLabel.Size = new System.Drawing.Size(1742, 13);
-            this._GameStatusLabel.Spring = true;
-            this._GameStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            _GameStatusLabel.Name = "_GameStatusLabel";
+            _GameStatusLabel.Size = new System.Drawing.Size(1742, 13);
+            _GameStatusLabel.Spring = true;
+            _GameStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // _DownloadStatusLabel
             // 
-            this._DownloadStatusLabel.Image = global::SAM.Game.Resources.Download;
-            this._DownloadStatusLabel.Name = "_DownloadStatusLabel";
-            this._DownloadStatusLabel.Size = new System.Drawing.Size(207, 28);
-            this._DownloadStatusLabel.Text = "Download status";
-            this._DownloadStatusLabel.Visible = false;
+            _DownloadStatusLabel.Image = Resources.Download;
+            _DownloadStatusLabel.Name = "_DownloadStatusLabel";
+            _DownloadStatusLabel.Size = new System.Drawing.Size(207, 28);
+            _DownloadStatusLabel.Text = "Download status";
+            _DownloadStatusLabel.Visible = false;
             // 
             // _CallbackTimer
             // 
-            this._CallbackTimer.Enabled = true;
-            this._CallbackTimer.Tick += new System.EventHandler(this.OnTimer);
+            _CallbackTimer.Enabled = true;
+            _CallbackTimer.Tick += OnTimer;
             // 
             // _MainTabControl
             // 
-            this._MainTabControl.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._MainTabControl.Controls.Add(this._AchievementsTabPage);
-            this._MainTabControl.Controls.Add(this._StatisticsTabPage);
-            this._MainTabControl.Location = new System.Drawing.Point(19, 66);
-            this._MainTabControl.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._MainTabControl.Name = "_MainTabControl";
-            this._MainTabControl.SelectedIndex = 0;
-            this._MainTabControl.Size = new System.Drawing.Size(1741, 669);
-            this._MainTabControl.TabIndex = 5;
+            _MainTabControl.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            _MainTabControl.Controls.Add(_AchievementsTabPage);
+            _MainTabControl.Controls.Add(_StatisticsTabPage);
+            _MainTabControl.Location = new System.Drawing.Point(19, 66);
+            _MainTabControl.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _MainTabControl.Name = "_MainTabControl";
+            _MainTabControl.SelectedIndex = 0;
+            _MainTabControl.Size = new System.Drawing.Size(1741, 669);
+            _MainTabControl.TabIndex = 5;
             // 
             // _AchievementsTabPage
             // 
-            this._AchievementsTabPage.Controls.Add(this._AchievementListView);
-            this._AchievementsTabPage.Controls.Add(this._AchievementsToolStrip);
-            this._AchievementsTabPage.Location = new System.Drawing.Point(4, 36);
-            this._AchievementsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._AchievementsTabPage.Name = "_AchievementsTabPage";
-            this._AchievementsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._AchievementsTabPage.Size = new System.Drawing.Size(1733, 629);
-            this._AchievementsTabPage.TabIndex = 0;
-            this._AchievementsTabPage.Text = "Achievements";
-            this._AchievementsTabPage.UseVisualStyleBackColor = true;
+            _AchievementsTabPage.Controls.Add(_AchievementListView);
+            _AchievementsTabPage.Controls.Add(_AchievementsToolStrip);
+            _AchievementsTabPage.Location = new System.Drawing.Point(4, 36);
+            _AchievementsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _AchievementsTabPage.Name = "_AchievementsTabPage";
+            _AchievementsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _AchievementsTabPage.Size = new System.Drawing.Size(1733, 629);
+            _AchievementsTabPage.TabIndex = 0;
+            _AchievementsTabPage.Text = "Achievements";
+            _AchievementsTabPage.UseVisualStyleBackColor = true;
             // 
             // _AchievementListView
             // 
-            this._AchievementListView.Activation = System.Windows.Forms.ItemActivation.OneClick;
-            this._AchievementListView.BackColor = System.Drawing.Color.Black;
-            this._AchievementListView.BackgroundImageTiled = true;
-            this._AchievementListView.CheckBoxes = true;
-            this._AchievementListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this._AchievementNameColumnHeader,
-            this._AchievementDescriptionColumnHeader,
-            this._AchievementUnlockTimeColumnHeader,
-            this._AchievementIDColumnHeader,
-            this._AchievementTimerColumnHeader});
-            this._AchievementListView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._AchievementListView.ForeColor = System.Drawing.Color.White;
-            this._AchievementListView.FullRowSelect = true;
-            this._AchievementListView.GridLines = true;
-            this._AchievementListView.HideSelection = false;
-            this._AchievementListView.LargeImageList = this._AchievementImageList;
-            this._AchievementListView.Location = new System.Drawing.Point(8, 51);
-            this._AchievementListView.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._AchievementListView.Name = "_AchievementListView";
-            this._AchievementListView.Size = new System.Drawing.Size(1717, 572);
-            this._AchievementListView.SmallImageList = this._AchievementImageList;
-            this._AchievementListView.Sorting = System.Windows.Forms.SortOrder.None;
-            this._AchievementListView.TabIndex = 4;
-            this._AchievementListView.UseCompatibleStateImageBehavior = false;
-            this._AchievementListView.View = System.Windows.Forms.View.Details;
-            this._AchievementListView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.AchievementListView_ColumnClick);
-            this._AchievementListView.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.OnCheckAchievement);
+            _AchievementListView.Activation = System.Windows.Forms.ItemActivation.OneClick;
+            _AchievementListView.BackgroundImageTiled = true;
+            _AchievementListView.CheckBoxes = true;
+            _AchievementListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { _AchievementNameColumnHeader, _AchievementDescriptionColumnHeader, _AchievementUnlockTimeColumnHeader, _AchievementIDColumnHeader, _AchievementTimerColumnHeader });
+            _AchievementListView.Dock = System.Windows.Forms.DockStyle.Fill;
+            _AchievementListView.FullRowSelect = true;
+            _AchievementListView.GridLines = true;
+            _AchievementListView.LargeImageList = _AchievementImageList;
+            _AchievementListView.Location = new System.Drawing.Point(8, 51);
+            _AchievementListView.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _AchievementListView.Name = "_AchievementListView";
+            _AchievementListView.Size = new System.Drawing.Size(1717, 572);
+            _AchievementListView.SmallImageList = _AchievementImageList;
+            _AchievementListView.TabIndex = 4;
+            _AchievementListView.UseCompatibleStateImageBehavior = false;
+            _AchievementListView.View = System.Windows.Forms.View.Details;
+            _AchievementListView.ColumnClick += AchievementListView_ColumnClick;
+            _AchievementListView.ItemCheck += OnCheckAchievement;
             // 
             // _AchievementNameColumnHeader
             // 
-            this._AchievementNameColumnHeader.Text = "Name";
-            this._AchievementNameColumnHeader.Width = 200;
+            _AchievementNameColumnHeader.Text = "Name";
+            _AchievementNameColumnHeader.Width = 200;
             // 
             // _AchievementDescriptionColumnHeader
             // 
-            this._AchievementDescriptionColumnHeader.Text = "Description";
-            this._AchievementDescriptionColumnHeader.Width = 300;
+            _AchievementDescriptionColumnHeader.Text = "Description";
+            _AchievementDescriptionColumnHeader.Width = 300;
             // 
             // _AchievementUnlockTimeColumnHeader
             // 
-            this._AchievementUnlockTimeColumnHeader.Text = "Unlock Time";
-            this._AchievementUnlockTimeColumnHeader.Width = 160;
+            _AchievementUnlockTimeColumnHeader.Text = "Unlock Time";
+            _AchievementUnlockTimeColumnHeader.Width = 160;
             // 
             // _AchievementIDColumnHeader
             // 
-            this._AchievementIDColumnHeader.Text = "ID";
-            this._AchievementIDColumnHeader.Width = 5;
+            _AchievementIDColumnHeader.Text = "ID";
+            _AchievementIDColumnHeader.Width = 5;
             // 
             // _AchievementTimerColumnHeader
             // 
-            this._AchievementTimerColumnHeader.Text = "Commit Timer";
-            this._AchievementTimerColumnHeader.Width = 208;
+            _AchievementTimerColumnHeader.Text = "Commit Timer";
+            _AchievementTimerColumnHeader.Width = 208;
             // 
             // _AchievementsToolStrip
             // 
-            this._AchievementsToolStrip.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this._AchievementsToolStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
-            this._AchievementsToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this._LockAllButton,
-            this._InvertAllButton,
-            this._UnlockAllButton,
-            _ToolStripSeparator1,
-            this._DisplayLabel,
-            this._DisplayLockedOnlyButton,
-            this._DisplayUnlockedOnlyButton,
-            _ToolStripSeparator2,
-            this._MatchingStringLabel,
-            this._MatchingStringTextBox,
-            this._LanguageLabel,
-            this._LanguageComboBox,
-            this.AddTimerLabel,
-            this._AddTimerTextBox,
-            this._AddTimerButton,
-            this._TimerSwitchButton});
-            this._AchievementsToolStrip.Location = new System.Drawing.Point(8, 6);
-            this._AchievementsToolStrip.Name = "_AchievementsToolStrip";
-            this._AchievementsToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
-            this._AchievementsToolStrip.Size = new System.Drawing.Size(1717, 45);
-            this._AchievementsToolStrip.TabIndex = 5;
+            _AchievementsToolStrip.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            _AchievementsToolStrip.ImageScalingSize = new System.Drawing.Size(28, 28);
+            _AchievementsToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { _LockAllButton, _InvertAllButton, _UnlockAllButton, _ToolStripSeparator1, _DisplayLabel, _DisplayLockedOnlyButton, _DisplayUnlockedOnlyButton, _ToolStripSeparator2, _MatchingStringLabel, _MatchingStringTextBox, _LanguageLabel, _LanguageComboBox, AddTimerLabel, _AddTimerTextBox, _AddTimerButton, _TimerSwitchButton });
+            _AchievementsToolStrip.Location = new System.Drawing.Point(8, 6);
+            _AchievementsToolStrip.Name = "_AchievementsToolStrip";
+            _AchievementsToolStrip.Padding = new System.Windows.Forms.Padding(0, 0, 5, 0);
+            _AchievementsToolStrip.Size = new System.Drawing.Size(1717, 45);
+            _AchievementsToolStrip.TabIndex = 5;
             // 
             // _LockAllButton
             // 
-            this._LockAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this._LockAllButton.Image = global::SAM.Game.Resources.Lock;
-            this._LockAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._LockAllButton.Name = "_LockAllButton";
-            this._LockAllButton.Size = new System.Drawing.Size(40, 39);
-            this._LockAllButton.Text = "Lock All";
-            this._LockAllButton.ToolTipText = "Lock all achievements.";
-            this._LockAllButton.Click += new System.EventHandler(this.OnLockAll);
+            _LockAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            _LockAllButton.Image = Resources.padlock;
+            _LockAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _LockAllButton.Name = "_LockAllButton";
+            _LockAllButton.Size = new System.Drawing.Size(40, 39);
+            _LockAllButton.Text = "Lock All";
+            _LockAllButton.ToolTipText = "Lock all achievements.";
+            _LockAllButton.Click += OnLockAll;
             // 
             // _InvertAllButton
             // 
-            this._InvertAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this._InvertAllButton.Image = global::SAM.Game.Resources.Invert;
-            this._InvertAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._InvertAllButton.Name = "_InvertAllButton";
-            this._InvertAllButton.Size = new System.Drawing.Size(40, 39);
-            this._InvertAllButton.Text = "Invert All";
-            this._InvertAllButton.ToolTipText = "Invert all achievements.";
-            this._InvertAllButton.Click += new System.EventHandler(this.OnInvertAll);
+            _InvertAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            _InvertAllButton.Image = Resources.invertN;
+            _InvertAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _InvertAllButton.Name = "_InvertAllButton";
+            _InvertAllButton.Size = new System.Drawing.Size(40, 39);
+            _InvertAllButton.Text = "Invert All";
+            _InvertAllButton.ToolTipText = "Invert all achievements.";
+            _InvertAllButton.Click += OnInvertAll;
             // 
             // _UnlockAllButton
             // 
-            this._UnlockAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this._UnlockAllButton.Image = global::SAM.Game.Resources.Unlock;
-            this._UnlockAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._UnlockAllButton.Name = "_UnlockAllButton";
-            this._UnlockAllButton.Size = new System.Drawing.Size(40, 39);
-            this._UnlockAllButton.Text = "Unlock All";
-            this._UnlockAllButton.ToolTipText = "Unlock all achievements.";
-            this._UnlockAllButton.Click += new System.EventHandler(this.OnUnlockAll);
+            _UnlockAllButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            _UnlockAllButton.Image = Resources.unlockN;
+            _UnlockAllButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _UnlockAllButton.Name = "_UnlockAllButton";
+            _UnlockAllButton.Size = new System.Drawing.Size(40, 39);
+            _UnlockAllButton.Text = "Unlock All";
+            _UnlockAllButton.ToolTipText = "Unlock all achievements.";
+            _UnlockAllButton.Click += OnUnlockAll;
             // 
             // _DisplayLabel
             // 
-            this._DisplayLabel.Name = "_DisplayLabel";
-            this._DisplayLabel.Size = new System.Drawing.Size(90, 39);
-            this._DisplayLabel.Text = "Show:";
+            _DisplayLabel.Name = "_DisplayLabel";
+            _DisplayLabel.Size = new System.Drawing.Size(90, 39);
+            _DisplayLabel.Text = "Show:";
             // 
             // _DisplayLockedOnlyButton
             // 
-            this._DisplayLockedOnlyButton.CheckOnClick = true;
-            this._DisplayLockedOnlyButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._DisplayLockedOnlyButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._DisplayLockedOnlyButton.Name = "_DisplayLockedOnlyButton";
-            this._DisplayLockedOnlyButton.Size = new System.Drawing.Size(102, 39);
-            this._DisplayLockedOnlyButton.Text = "locked";
-            this._DisplayLockedOnlyButton.Click += new System.EventHandler(this.OnDisplayCheckedOnly);
+            _DisplayLockedOnlyButton.CheckOnClick = true;
+            _DisplayLockedOnlyButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            _DisplayLockedOnlyButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _DisplayLockedOnlyButton.Name = "_DisplayLockedOnlyButton";
+            _DisplayLockedOnlyButton.Size = new System.Drawing.Size(102, 39);
+            _DisplayLockedOnlyButton.Text = "locked";
+            _DisplayLockedOnlyButton.Click += OnDisplayCheckedOnly;
             // 
             // _DisplayUnlockedOnlyButton
             // 
-            this._DisplayUnlockedOnlyButton.CheckOnClick = true;
-            this._DisplayUnlockedOnlyButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._DisplayUnlockedOnlyButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._DisplayUnlockedOnlyButton.Name = "_DisplayUnlockedOnlyButton";
-            this._DisplayUnlockedOnlyButton.Size = new System.Drawing.Size(134, 39);
-            this._DisplayUnlockedOnlyButton.Text = "unlocked";
-            this._DisplayUnlockedOnlyButton.Click += new System.EventHandler(this.OnDisplayUncheckedOnly);
+            _DisplayUnlockedOnlyButton.CheckOnClick = true;
+            _DisplayUnlockedOnlyButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            _DisplayUnlockedOnlyButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _DisplayUnlockedOnlyButton.Name = "_DisplayUnlockedOnlyButton";
+            _DisplayUnlockedOnlyButton.Size = new System.Drawing.Size(134, 39);
+            _DisplayUnlockedOnlyButton.Text = "unlocked";
+            _DisplayUnlockedOnlyButton.Click += OnDisplayUncheckedOnly;
             // 
             // _MatchingStringLabel
             // 
-            this._MatchingStringLabel.Name = "_MatchingStringLabel";
-            this._MatchingStringLabel.Size = new System.Drawing.Size(78, 39);
-            this._MatchingStringLabel.Text = "Filter";
+            _MatchingStringLabel.Name = "_MatchingStringLabel";
+            _MatchingStringLabel.Size = new System.Drawing.Size(78, 39);
+            _MatchingStringLabel.Text = "Filter";
             // 
             // _MatchingStringTextBox
             // 
-            this._MatchingStringTextBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this._MatchingStringTextBox.Name = "_MatchingStringTextBox";
-            this._MatchingStringTextBox.Size = new System.Drawing.Size(180, 45);
-            this._MatchingStringTextBox.ToolTipText = "Type at least 3 characters that must appear in the name or description";
-            this._MatchingStringTextBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.OnFilterUpdate);
+            _MatchingStringTextBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            _MatchingStringTextBox.Name = "_MatchingStringTextBox";
+            _MatchingStringTextBox.Size = new System.Drawing.Size(180, 45);
+            _MatchingStringTextBox.ToolTipText = "Type at least 3 characters that must appear in the name or description";
+            _MatchingStringTextBox.KeyUp += OnFilterUpdate;
             // 
             // _LanguageLabel
             // 
-            this._LanguageLabel.Name = "_LanguageLabel";
-            this._LanguageLabel.Size = new System.Drawing.Size(140, 39);
-            this._LanguageLabel.Text = "Language";
+            _LanguageLabel.Name = "_LanguageLabel";
+            _LanguageLabel.Size = new System.Drawing.Size(140, 39);
+            _LanguageLabel.Text = "Language";
             // 
             // _LanguageComboBox
             // 
-            this._LanguageComboBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this._LanguageComboBox.Items.AddRange(new object[] {
-            "english",
-            "tchinese",
-            "japanese",
-            "arabic",
-            "brazilian",
-            "bulgarian",
-            "czech",
-            "danish",
-            "dutch",
-            "finnish",
-            "french",
-            "german",
-            "greek",
-            "hungarian",
-            "indonesian",
-            "italian",
-            "koreana",
-            "latam",
-            "norwegian",
-            "polish",
-            "portuguese",
-            "romanian",
-            "russian",
-            "schinese",
-            "spanish",
-            "swedish",
-            "th",
-            "turkish",
-            "ukrainian",
-            "vietnamese"});
-            this._LanguageComboBox.Name = "_LanguageComboBox";
-            this._LanguageComboBox.Size = new System.Drawing.Size(160, 45);
+            _LanguageComboBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            _LanguageComboBox.Items.AddRange(new object[] { "english", "tchinese", "japanese", "arabic", "brazilian", "bulgarian", "czech", "danish", "dutch", "finnish", "french", "german", "greek", "hungarian", "indonesian", "italian", "koreana", "latam", "norwegian", "polish", "portuguese", "romanian", "russian", "schinese", "spanish", "swedish", "th", "turkish", "ukrainian", "vietnamese" });
+            _LanguageComboBox.Name = "_LanguageComboBox";
+            _LanguageComboBox.Size = new System.Drawing.Size(160, 45);
             // 
             // AddTimerLabel
             // 
-            this.AddTimerLabel.Name = "AddTimerLabel";
-            this.AddTimerLabel.Size = new System.Drawing.Size(123, 39);
-            this.AddTimerLabel.Text = "Counter:";
+            AddTimerLabel.Name = "AddTimerLabel";
+            AddTimerLabel.Size = new System.Drawing.Size(123, 39);
+            AddTimerLabel.Text = "Counter:";
             // 
             // _AddTimerTextBox
             // 
-            this._AddTimerTextBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this._AddTimerTextBox.Name = "_AddTimerTextBox";
-            this._AddTimerTextBox.Size = new System.Drawing.Size(120, 45);
-            this._AddTimerTextBox.Text = "600";
-            this._AddTimerTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this._AddTimerTextBox_KeyPress);
-            this._AddTimerTextBox.TextChanged += new System.EventHandler(this._AddTimerTextBox_TextChanged);
+            _AddTimerTextBox.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            _AddTimerTextBox.Name = "_AddTimerTextBox";
+            _AddTimerTextBox.Size = new System.Drawing.Size(120, 45);
+            _AddTimerTextBox.Text = "600";
+            _AddTimerTextBox.KeyPress += _AddTimerTextBox_KeyPress;
+            _AddTimerTextBox.TextChanged += _AddTimerTextBox_TextChanged;
             // 
             // _AddTimerButton
             // 
-            this._AddTimerButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._AddTimerButton.Image = ((System.Drawing.Image)(resources.GetObject("_AddTimerButton.Image")));
-            this._AddTimerButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._AddTimerButton.Name = "_AddTimerButton";
-            this._AddTimerButton.Size = new System.Drawing.Size(181, 39);
-            this._AddTimerButton.Text = "Add Counter";
-            this._AddTimerButton.Click += new System.EventHandler(this._AddTimerButton_Click);
+            _AddTimerButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            _AddTimerButton.Image = (System.Drawing.Image)resources.GetObject("_AddTimerButton.Image");
+            _AddTimerButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _AddTimerButton.Name = "_AddTimerButton";
+            _AddTimerButton.Size = new System.Drawing.Size(181, 39);
+            _AddTimerButton.Text = "Add Counter";
+            _AddTimerButton.Click += _AddTimerButton_Click;
             // 
             // _TimerSwitchButton
             // 
-            this._TimerSwitchButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._TimerSwitchButton.Image = ((System.Drawing.Image)(resources.GetObject("_TimerSwitchButton.Image")));
-            this._TimerSwitchButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this._TimerSwitchButton.Name = "_TimerSwitchButton";
-            this._TimerSwitchButton.Size = new System.Drawing.Size(158, 39);
-            this._TimerSwitchButton.Text = "Start Timer";
-            this._TimerSwitchButton.ToolTipText = "Start countdown timer";
-            this._TimerSwitchButton.Click += new System.EventHandler(this._TimerSwitchButton_Click);
+            _TimerSwitchButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            _TimerSwitchButton.Image = (System.Drawing.Image)resources.GetObject("_TimerSwitchButton.Image");
+            _TimerSwitchButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            _TimerSwitchButton.Name = "_TimerSwitchButton";
+            _TimerSwitchButton.Size = new System.Drawing.Size(158, 39);
+            _TimerSwitchButton.Text = "Start Timer";
+            _TimerSwitchButton.ToolTipText = "Start countdown timer";
+            _TimerSwitchButton.Click += _TimerSwitchButton_Click;
             // 
             // _StatisticsTabPage
             // 
-            this._StatisticsTabPage.Controls.Add(this._EnableStatsEditingCheckBox);
-            this._StatisticsTabPage.Controls.Add(this._StatisticsDataGridView);
-            this._StatisticsTabPage.Location = new System.Drawing.Point(4, 36);
-            this._StatisticsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._StatisticsTabPage.Name = "_StatisticsTabPage";
-            this._StatisticsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._StatisticsTabPage.Size = new System.Drawing.Size(1733, 629);
-            this._StatisticsTabPage.TabIndex = 1;
-            this._StatisticsTabPage.Text = "Statistics";
-            this._StatisticsTabPage.UseVisualStyleBackColor = true;
+            _StatisticsTabPage.Controls.Add(_EnableStatsEditingCheckBox);
+            _StatisticsTabPage.Controls.Add(_StatisticsDataGridView);
+            _StatisticsTabPage.Location = new System.Drawing.Point(4, 35);
+            _StatisticsTabPage.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _StatisticsTabPage.Name = "_StatisticsTabPage";
+            _StatisticsTabPage.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _StatisticsTabPage.Size = new System.Drawing.Size(1733, 630);
+            _StatisticsTabPage.TabIndex = 1;
+            _StatisticsTabPage.Text = "Statistics";
+            _StatisticsTabPage.UseVisualStyleBackColor = true;
             // 
             // _EnableStatsEditingCheckBox
             // 
-            this._EnableStatsEditingCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._EnableStatsEditingCheckBox.AutoSize = true;
-            this._EnableStatsEditingCheckBox.Location = new System.Drawing.Point(14, 572);
-            this._EnableStatsEditingCheckBox.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._EnableStatsEditingCheckBox.Name = "_EnableStatsEditingCheckBox";
-            this._EnableStatsEditingCheckBox.Size = new System.Drawing.Size(1112, 31);
-            this._EnableStatsEditingCheckBox.TabIndex = 1;
-            this._EnableStatsEditingCheckBox.Text = "I understand by modifying the values of stats, I may screw things up and can\'t bl" +
-    "ame anyone but myself.";
-            this._EnableStatsEditingCheckBox.UseVisualStyleBackColor = true;
-            this._EnableStatsEditingCheckBox.CheckedChanged += new System.EventHandler(this.OnStatAgreementChecked);
+            _EnableStatsEditingCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            _EnableStatsEditingCheckBox.AutoSize = true;
+            _EnableStatsEditingCheckBox.Location = new System.Drawing.Point(14, 563);
+            _EnableStatsEditingCheckBox.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _EnableStatsEditingCheckBox.Name = "_EnableStatsEditingCheckBox";
+            _EnableStatsEditingCheckBox.Size = new System.Drawing.Size(1112, 31);
+            _EnableStatsEditingCheckBox.TabIndex = 1;
+            _EnableStatsEditingCheckBox.Text = "I understand by modifying the values of stats, I may screw things up and can't blame anyone but myself.";
+            _EnableStatsEditingCheckBox.UseVisualStyleBackColor = true;
+            _EnableStatsEditingCheckBox.CheckedChanged += OnStatAgreementChecked;
             // 
             // _StatisticsDataGridView
             // 
-            this._StatisticsDataGridView.AllowUserToAddRows = false;
-            this._StatisticsDataGridView.AllowUserToDeleteRows = false;
-            this._StatisticsDataGridView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._StatisticsDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this._StatisticsDataGridView.Location = new System.Drawing.Point(14, 12);
-            this._StatisticsDataGridView.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._StatisticsDataGridView.Name = "_StatisticsDataGridView";
-            this._StatisticsDataGridView.RowHeadersWidth = 72;
-            this._StatisticsDataGridView.Size = new System.Drawing.Size(1391, 546);
-            this._StatisticsDataGridView.TabIndex = 0;
-            this._StatisticsDataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.OnStatCellEndEdit);
-            this._StatisticsDataGridView.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.OnStatDataError);
+            _StatisticsDataGridView.AllowUserToAddRows = false;
+            _StatisticsDataGridView.AllowUserToDeleteRows = false;
+            _StatisticsDataGridView.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            _StatisticsDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            _StatisticsDataGridView.Location = new System.Drawing.Point(14, 12);
+            _StatisticsDataGridView.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            _StatisticsDataGridView.Name = "_StatisticsDataGridView";
+            _StatisticsDataGridView.RowHeadersWidth = 72;
+            _StatisticsDataGridView.Size = new System.Drawing.Size(1391, 537);
+            _StatisticsDataGridView.TabIndex = 0;
+            _StatisticsDataGridView.CellEndEdit += OnStatCellEndEdit;
+            _StatisticsDataGridView.DataError += OnStatDataError;
             // 
-            // _TimeNowtimer
+            // _timeNowTimer
+            //
+            _timeNowTimer.Enabled = true;
+            _timeNowTimer.Interval = 500;
+            _timeNowTimer.Tick += _timeNowTimer_Tick;
             // 
-            this._TimeNowtimer.Enabled = true;
-            this._TimeNowtimer.Interval = 500;
-            this._TimeNowtimer.Tick += new System.EventHandler(this._TimeNowtimer_Tick);
+            // _submitAchievementsTimer
             // 
-            // _SumbitAchievementsTimer
-            // 
-            this._SumbitAchievementsTimer.Interval = 1000;
-            this._SumbitAchievementsTimer.Tick += new System.EventHandler(this._SumbitAchievementsTimer_Tick);
+            _submitAchievementsTimer.Interval = 1000;
+            _submitAchievementsTimer.Tick += _submitAchievementsTimer_Tick;
             // 
             // _idleTimer
             // 
-            this._idleTimer.Interval = 60000;
-            this._idleTimer.Tick += new System.EventHandler(this._idleTimer_Tick);
+            _idleTimer.Interval = 60000;
+            _idleTimer.Tick += _idleTimer_Tick;
             // 
             // Manager
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(168F, 168F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.ClientSize = new System.Drawing.Size(1778, 784);
-            this.Controls.Add(this._MainToolStrip);
-            this.Controls.Add(this._MainTabControl);
-            this.Controls.Add(this._MainStatusStrip);
-            this.Font = new System.Drawing.Font("新細明體", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this.MinimumSize = new System.Drawing.Size(1461, 64);
-            this.Name = "Manager";
-            this.Text = "Steam Achievement ManagerX 7.0";
-            this._MainToolStrip.ResumeLayout(false);
-            this._MainToolStrip.PerformLayout();
-            this._MainStatusStrip.ResumeLayout(false);
-            this._MainStatusStrip.PerformLayout();
-            this._MainTabControl.ResumeLayout(false);
-            this._AchievementsTabPage.ResumeLayout(false);
-            this._AchievementsTabPage.PerformLayout();
-            this._AchievementsToolStrip.ResumeLayout(false);
-            this._AchievementsToolStrip.PerformLayout();
-            this._StatisticsTabPage.ResumeLayout(false);
-            this._StatisticsTabPage.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this._StatisticsDataGridView)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new System.Drawing.SizeF(168F, 168F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            ClientSize = new System.Drawing.Size(1778, 784);
+            Controls.Add(_MainToolStrip);
+            Controls.Add(_MainTabControl);
+            Controls.Add(_MainStatusStrip);
+            Font = new System.Drawing.Font("新細明體", 11.14286F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 136);
+            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Margin = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            MinimumSize = new System.Drawing.Size(1461, 64);
+            Name = "Manager";
+            Text = "Steam Achievement ManagerX 7.0";
+            _MainToolStrip.ResumeLayout(false);
+            _MainToolStrip.PerformLayout();
+            _MainStatusStrip.ResumeLayout(false);
+            _MainStatusStrip.PerformLayout();
+            _MainTabControl.ResumeLayout(false);
+            _AchievementsTabPage.ResumeLayout(false);
+            _AchievementsTabPage.PerformLayout();
+            _AchievementsToolStrip.ResumeLayout(false);
+            _AchievementsToolStrip.PerformLayout();
+            _StatisticsTabPage.ResumeLayout(false);
+            _StatisticsTabPage.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)_StatisticsDataGridView).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
 
         }
 
@@ -588,14 +530,15 @@
         private System.Windows.Forms.ColumnHeader _AchievementIDColumnHeader;
         private System.Windows.Forms.ColumnHeader _AchievementTimerColumnHeader;
         private System.Windows.Forms.ToolStripLabel _TimeNowLabel;
-        private System.Windows.Forms.Timer _TimeNowtimer;
+        private System.Windows.Forms.Timer _timeNowTimer;
         private System.Windows.Forms.ToolStripLabel AddTimerLabel;
         private System.Windows.Forms.ToolStripTextBox _AddTimerTextBox;
         private System.Windows.Forms.ToolStripButton _AddTimerButton;
         private System.Windows.Forms.ToolStripButton _TimerSwitchButton;
-        private System.Windows.Forms.Timer _SumbitAchievementsTimer;
+        private System.Windows.Forms.Timer _submitAchievementsTimer;
         private System.Windows.Forms.ToolStripLabel _TimerLabel;
         private System.Windows.Forms.Timer _idleTimer;
         private System.Windows.Forms.ToolStripButton _autoMouseMoveButton;
+        private System.Windows.Forms.ToolStripButton _CloseButton;
     }
 }

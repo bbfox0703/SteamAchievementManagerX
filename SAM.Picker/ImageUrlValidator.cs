@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 
@@ -8,10 +10,12 @@ namespace SAM.Picker
         private static readonly HashSet<string> AllowedHosts = new(StringComparer.OrdinalIgnoreCase)
         {
             "shared.cloudflare.steamstatic.com",
+            "shared.akamai.steamstatic.com",
             "cdn.steamstatic.com",
+            "shared.steamstatic.com",
         };
 
-        public static bool TryCreateUri(string url, out Uri uri)
+        public static bool TryCreateUri(string url, out Uri? uri)
         {
             uri = null;
 
