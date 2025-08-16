@@ -233,7 +233,7 @@ namespace SAM.Picker
                     else if (bottom) m.Result = (IntPtr)HTBOTTOM;
                     else
                     {
-                        Control child = this.GetChildAtPoint(pt);
+                        Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
                             m.Result = (IntPtr)HTCAPTION;
