@@ -33,6 +33,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using SAM.WinForms;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using static SAM.Game.InvariantShorthand;

@@ -38,6 +38,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
+using SAM.WinForms;
 using Microsoft.Win32;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
