@@ -26,7 +26,7 @@
    These changes are tailored to my own preferences and use cases.
 
 4. **License and Copyright**  
-   This project follows the same license as the original repository (e.g., MIT, GPL, etc.). For further details, please refer to the [LICENSE](LICENSE) file.  
+   This project follows the same license as the original repository (e.g., MIT, GPL, etc.). For further details, please refer to the [LICENSE](https://github.com/bbfox0703/SteamAchievementManagerX?tab=License-1-ov-file#) file.  
 
 5. **Disclaimer**  
    This software is provided "as-is" for educational and personal use only.  
