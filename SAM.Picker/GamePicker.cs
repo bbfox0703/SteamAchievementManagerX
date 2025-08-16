@@ -804,13 +804,18 @@ namespace SAM.Picker
                     return;
                 }
 
-                GameInfo info;
+                GameInfo? info;
                 while (true)
                 {
                     if (this._LogoQueue.TryDequeue(out info) == false)
                     {
                         this._DownloadStatusLabel.Visible = false;
                         return;
+                    }
+
+                    if (info == null)
+                    {
+                        continue;
                     }
 
                     if (info.Item == null)
@@ -831,7 +836,7 @@ namespace SAM.Picker
                 this._DownloadStatusLabel.Text = $"Downloading {1 + this._LogoQueue.Count} game icons...";
                 this._DownloadStatusLabel.Visible = true;
 
-                this._LogoWorker.RunWorkerAsync(info);
+                this._LogoWorker.RunWorkerAsync(info!);
             }
         }
 
