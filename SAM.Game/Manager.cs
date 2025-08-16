@@ -699,6 +699,7 @@ namespace SAM.Game
 
             bool wantLocked = this._DisplayLockedOnlyButton.Checked == true;
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
+            bool light = this.IsLightTheme();
 
             foreach (var def in this._AchievementDefinitions)
             {
@@ -753,7 +754,12 @@ namespace SAM.Game
                     Checked = isAchieved,
                     Tag = info,
                     Text = info.Name,
-                    BackColor = (def.Permission & 3) == 0 ? Color.Black : Color.FromArgb(64, 0, 0),
+                    BackColor = (def.Permission & 3) == 0
+                        ? this.BackColor
+                        : (light
+                            ? ControlPaint.Light(this.BackColor)
+                            : ControlPaint.Dark(this.BackColor)),
+                    ForeColor = this.ForeColor,
                 };
 
                 info.Item = item;
@@ -776,6 +782,12 @@ namespace SAM.Game
                 item.SubItems.Add(info.Id);
                 item.SubItems.Add("-1");
                 //----------------
+
+                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                {
+                    subItem.BackColor = item.BackColor;
+                    subItem.ForeColor = item.ForeColor;
+                }
 
                 info.ImageIndex = 0;
 
@@ -1684,6 +1696,22 @@ namespace SAM.Game
             this._MatchingStringTextBox.ForeColor = this.ForeColor;
             this._AddTimerTextBox.BackColor = this.BackColor;
             this._AddTimerTextBox.ForeColor = this.ForeColor;
+
+            Color restrictedBack = light
+                ? ControlPaint.Light(this._AchievementListView.BackColor)
+                : ControlPaint.Dark(this._AchievementListView.BackColor);
+            foreach (ListViewItem item in this._AchievementListView.Items)
+            {
+                bool restricted = item.Tag is Stats.AchievementInfo info && (info.Permission & 3) != 0;
+                Color itemBack = restricted ? restrictedBack : this._AchievementListView.BackColor;
+                item.BackColor = itemBack;
+                item.ForeColor = this._AchievementListView.ForeColor;
+                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                {
+                    subItem.BackColor = itemBack;
+                    subItem.ForeColor = this._AchievementListView.ForeColor;
+                }
+            }
 
 
             for (int i = 0; i < this._StatisticsDataGridView.ColumnCount; i++)
