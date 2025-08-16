@@ -662,7 +662,7 @@ namespace SAM.Picker
                                     validateImageData: true);
                                 if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
                                 {
-                                    Bitmap bitmap = new(image);
+                                    Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
                                     e.Result = new LogoInfo(info.Id, bitmap);
                                     return;
                                 }
@@ -716,7 +716,7 @@ namespace SAM.Picker
                                     throw new InvalidDataException("Image dimensions too large");
                                 }
 
-                                Bitmap bitmap = new(image);
+                                Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
                                 e.Result = new LogoInfo(info.Id, bitmap);
                                 info.ImageUrl = url;
 
@@ -724,7 +724,8 @@ namespace SAM.Picker
                                 {
                                     try
                                     {
-                                        File.WriteAllBytes(cacheFile, data);
+                                        var cacheData = bitmap.ToPngBytes();
+                                        File.WriteAllBytes(cacheFile, cacheData);
                                     }
                                     catch (Exception)
                                     {
