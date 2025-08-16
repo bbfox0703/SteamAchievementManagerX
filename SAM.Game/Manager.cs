@@ -1634,6 +1634,24 @@ namespace SAM.Game
 
             SetWindowTheme(this._AchievementListView.Handle, theme, null);
             SetWindowTheme(this._MainTabControl.Handle, theme, null);
+            SetWindowTheme(this._MainToolStrip.Handle, theme, null);
+            SetWindowTheme(this._AchievementsToolStrip.Handle, theme, null);
+            SetWindowTheme(this._StatisticsDataGridView.Handle, theme, null);
+
+            if (this._MatchingStringTextBox.Control != null)
+            {
+                SetWindowTheme(this._MatchingStringTextBox.Control.Handle, theme, null);
+            }
+
+            if (this._AddTimerTextBox.Control != null)
+            {
+                SetWindowTheme(this._AddTimerTextBox.Control.Handle, theme, null);
+            }
+
+            if (this._LanguageComboBox.Control != null)
+            {
+                SetWindowTheme(this._LanguageComboBox.Control.Handle, theme, null);
+            }
         }
 
         private bool IsLightTheme()
