@@ -66,13 +66,22 @@ namespace SAM.WinForms
                 grid.EnableHeadersVisualStyles = false;
                 grid.ColumnHeadersDefaultCellStyle.BackColor = back;
                 grid.ColumnHeadersDefaultCellStyle.ForeColor = fore;
+                grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = back;
+                grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = fore;
                 grid.RowHeadersDefaultCellStyle.BackColor = back;
                 grid.RowHeadersDefaultCellStyle.ForeColor = fore;
+                grid.RowHeadersDefaultCellStyle.SelectionBackColor = back;
+                grid.RowHeadersDefaultCellStyle.SelectionForeColor = fore;
 
                 foreach (DataGridViewColumn column in grid.Columns)
                 {
                     ApplyTheme(column, back, fore);
                 }
+
+                grid.TopLeftHeaderCell.Style.BackColor = back;
+                grid.TopLeftHeaderCell.Style.ForeColor = fore;
+                grid.TopLeftHeaderCell.Style.SelectionBackColor = back;
+                grid.TopLeftHeaderCell.Style.SelectionForeColor = fore;
 
                 ApplyScrollBarTheme(grid, back);
             });
@@ -105,6 +114,8 @@ namespace SAM.WinForms
                 column.DefaultCellStyle.ForeColor = fore;
                 column.HeaderCell.Style.BackColor = back;
                 column.HeaderCell.Style.ForeColor = fore;
+                column.HeaderCell.Style.SelectionBackColor = back;
+                column.HeaderCell.Style.SelectionForeColor = fore;
             });
 
             // Tab control page text.
@@ -114,6 +125,13 @@ namespace SAM.WinForms
                 tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
                 tabs.DrawItem -= OnTabControlDrawItem;
                 tabs.DrawItem += OnTabControlDrawItem;
+            });
+
+            // Tab pages must opt out of visual styles for custom colors.
+            RegisterHandler(typeof(TabPage), (o, back, fore) =>
+            {
+                var page = (TabPage)o;
+                page.UseVisualStyleBackColor = false;
             });
         }
 
@@ -189,8 +207,8 @@ namespace SAM.WinForms
             }
 
             TabPage page = tabs.TabPages[e.Index];
-            using var back = new SolidBrush(tabs.BackColor);
-            using var fore = new SolidBrush(tabs.ForeColor);
+            using var back = new SolidBrush(page.BackColor);
+            using var fore = new SolidBrush(page.ForeColor);
             e.Graphics.FillRectangle(back, e.Bounds);
             var bounds = e.Bounds;
             bounds.Inflate(-2, -2);
