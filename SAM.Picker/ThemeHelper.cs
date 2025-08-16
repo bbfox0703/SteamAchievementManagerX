@@ -46,9 +46,12 @@ namespace SAM.Picker
                     }
                     else if (control is ListView listView)
                     {
-                        foreach (ListViewItem item in listView.Items)
+                        if (!listView.VirtualMode)
                         {
-                            ApplyTheme(item, back, fore);
+                            foreach (ListViewItem item in listView.Items)
+                            {
+                                ApplyTheme(item, back, fore);
+                            }
                         }
                     }
                     else if (control is DataGridView grid)
