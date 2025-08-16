@@ -333,8 +333,7 @@ namespace SAM.Picker
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                object value = key?.GetValue("AppsUseLightTheme");
-                if (value is int i)
+                if (key?.GetValue("AppsUseLightTheme") is int i)
                 {
                     return i != 0;
                 }
