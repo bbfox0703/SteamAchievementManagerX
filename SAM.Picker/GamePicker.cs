@@ -638,7 +638,12 @@ namespace SAM.Picker
 
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
         {
-            var info = (GameInfo)e.Argument;
+            var info = e.Argument as GameInfo;
+            if (info == null)
+            {
+                e.Result = null;
+                return;
+            }
 
             List<string> urls = new() { info.ImageUrl };
             var fallbackUrl = _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{info.Id}/header.jpg");
