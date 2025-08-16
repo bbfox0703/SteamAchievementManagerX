@@ -60,7 +60,7 @@
             _EnableStatsEditingCheckBox = new System.Windows.Forms.CheckBox();
             _StatisticsDataGridView = new System.Windows.Forms.DataGridView();
             _TimeNowtimer = new System.Windows.Forms.Timer(components);
-            _SumbitAchievementsTimer = new System.Windows.Forms.Timer(components);
+            _submitAchievementsTimer = new System.Windows.Forms.Timer(components);
             _idleTimer = new System.Windows.Forms.Timer(components);
             _ToolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             _ToolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
@@ -454,10 +454,10 @@
             _TimeNowtimer.Interval = 500;
             _TimeNowtimer.Tick += _TimeNowtimer_Tick;
             // 
-            // _SumbitAchievementsTimer
+            // _submitAchievementsTimer
             // 
-            _SumbitAchievementsTimer.Interval = 1000;
-            _SumbitAchievementsTimer.Tick += _SumbitAchievementsTimer_Tick;
+            _submitAchievementsTimer.Interval = 1000;
+            _submitAchievementsTimer.Tick += _submitAchievementsTimer_Tick;
             // 
             // _idleTimer
             // 
@@ -535,7 +535,7 @@
         private System.Windows.Forms.ToolStripTextBox _AddTimerTextBox;
         private System.Windows.Forms.ToolStripButton _AddTimerButton;
         private System.Windows.Forms.ToolStripButton _TimerSwitchButton;
-        private System.Windows.Forms.Timer _SumbitAchievementsTimer;
+        private System.Windows.Forms.Timer _submitAchievementsTimer;
         private System.Windows.Forms.ToolStripLabel _TimerLabel;
         private System.Windows.Forms.Timer _idleTimer;
         private System.Windows.Forms.ToolStripButton _autoMouseMoveButton;
