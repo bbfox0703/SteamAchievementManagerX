@@ -34,4 +34,6 @@
 
 ## Attribution
 
-Most (if not all) icons are from the [Fugue Icons](https://p.yusukekamiyamane.com/) set.  
+Most (if not all) icons are from:
+* the [Fugue Icons](https://p.yusukekamiyamane.com/) set.  
+* [Flaticon](https://www.flaticon.com/) free license
