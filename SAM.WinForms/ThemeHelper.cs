@@ -224,7 +224,9 @@ namespace SAM.WinForms
                 Alignment = StringAlignment.Near,
                 LineAlignment = StringAlignment.Center,
             };
-            e.Graphics.DrawString(e.Header.Text, list.Font, fore, bounds, format);
+            var text = e.Header?.Text ?? string.Empty;
+            var font = list.Font ?? SystemFonts.DefaultFont;
+            e.Graphics.DrawString(text, font, fore, bounds, format);
         }
 
         private static void OnListViewDrawItem(object? sender, DrawListViewItemEventArgs e)
@@ -255,7 +257,8 @@ namespace SAM.WinForms
                 Alignment = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center,
             };
-            e.Graphics.DrawString(page.Text, e.Font, fore, bounds, format);
+            var font = e.Font ?? SystemFonts.DefaultFont;
+            e.Graphics.DrawString(page.Text ?? string.Empty, font, fore, bounds, format);
         }
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
