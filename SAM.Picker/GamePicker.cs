@@ -651,7 +651,7 @@ namespace SAM.Picker
                 urls.Add(fallbackUrl);
             }
 
-            string cacheFile = null;
+            string? cacheFile = null;
             if (this._UseIconCache == true)
             {
                 cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
