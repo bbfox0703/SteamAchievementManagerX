@@ -472,7 +472,11 @@ namespace SAM.Picker
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
                 {
-                    string type = nodes.Current.GetAttribute("type", "");
+                    string type = nodes.Current?.GetAttribute("type", "");
+                    if (nodes.Current == null)
+                    {
+                        continue;
+                    }
                     if (string.IsNullOrEmpty(type) == true)
                     {
                         type = "normal";
@@ -1013,7 +1017,11 @@ namespace SAM.Picker
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
                 {
-                    string idText = nodes.Current.GetAttribute("id", "");
+                    string idText = nodes.Current?.GetAttribute("id", "");
+                    if (nodes.Current == null)
+                    {
+                        continue;
+                    }
                     if (uint.TryParse(idText, out var id) == false)
                     {
                         continue;
