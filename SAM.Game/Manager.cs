@@ -1258,7 +1258,7 @@ namespace SAM.Game
             this.GetAchievements();
         }
 
-        private void _TimeNowtimer_Tick(object sender, EventArgs e)
+        private void _timeNowTimer_Tick(object sender, EventArgs e)
         {
             _TimeNowLabel.Text = "   Cur. Time: " + DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
         }
