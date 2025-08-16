@@ -635,13 +635,11 @@ namespace SAM.Picker
         {
             var info = (GameInfo)e.Argument;
 
-            this._LogosAttempted.Add(info.ImageUrl);
-
-            if (ImageUrlValidator.TryCreateUri(info.ImageUrl, out var uri) == false)
+            List<string> urls = new() { info.ImageUrl };
+            var fallbackUrl = _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{info.Id}/header.jpg");
+            if (urls.Contains(fallbackUrl) == false)
             {
-                Debug.WriteLine(_($"Invalid image URL for app {info.Id}: {info.ImageUrl}"));
-                e.Result = new LogoInfo(info.Id, null);
-                return;
+                urls.Add(fallbackUrl);
             }
 
             string cacheFile = null;
@@ -686,61 +684,75 @@ namespace SAM.Picker
                 }
             }
 
-            try
+            foreach (var url in urls)
             {
-                var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
-                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+                this._LogosAttempted.Add(url);
+
+                if (ImageUrlValidator.TryCreateUri(url, out var uri) == false)
                 {
-                    throw new InvalidDataException("Invalid content type");
+                    Debug.WriteLine(_($"Invalid image URL for app {info.Id}: {url}"));
+                    continue;
                 }
 
-                using (MemoryStream stream = new(data, false))
+                try
                 {
-                    try
+                    var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
+                    if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
                     {
-                        using (var image = Image.FromStream(
-                                   stream,
-                                   useEmbeddedColorManagement: false,
-                                   validateImageData: true))
+                        throw new InvalidDataException("Invalid content type");
+                    }
+
+                    using (MemoryStream stream = new(data, false))
+                    {
+                        try
                         {
-                            if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                            using (var image = Image.FromStream(
+                                       stream,
+                                       useEmbeddedColorManagement: false,
+                                       validateImageData: true))
                             {
-                                throw new InvalidDataException("Image dimensions too large");
-                            }
-
-                            Bitmap bitmap = new(image);
-                            e.Result = new LogoInfo(info.Id, bitmap);
-
-                            if (this._UseIconCache == true && cacheFile != null)
-                            {
-                                try
+                                if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
                                 {
-                                    File.WriteAllBytes(cacheFile, data);
+                                    throw new InvalidDataException("Image dimensions too large");
                                 }
-                                catch (Exception)
+
+                                Bitmap bitmap = new(image);
+                                e.Result = new LogoInfo(info.Id, bitmap);
+                                info.ImageUrl = url;
+
+                                if (this._UseIconCache == true && cacheFile != null)
                                 {
-                                    this._UseIconCache = false;
+                                    try
+                                    {
+                                        File.WriteAllBytes(cacheFile, data);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        this._UseIconCache = false;
+                                    }
                                 }
+                                return;
                             }
                         }
-                    }
-                    catch (ArgumentException)
-                    {
-                        e.Result = new LogoInfo(info.Id, null);
-                        return;
-                    }
-                    catch (OutOfMemoryException)
-                    {
-                        e.Result = new LogoInfo(info.Id, null);
-                        return;
+                        catch (ArgumentException)
+                        {
+                            e.Result = new LogoInfo(info.Id, null);
+                            return;
+                        }
+                        catch (OutOfMemoryException)
+                        {
+                            e.Result = new LogoInfo(info.Id, null);
+                            return;
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(_($"Failed to download image for app {info.Id} from {url}: {ex}"));
+                }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(_($"Failed to download image for app {info.Id} from {info.ImageUrl}: {ex}"));
-                e.Result = new LogoInfo(info.Id, null);
-            }
+
+            e.Result = new LogoInfo(info.Id, null);
         }
 
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
@@ -927,6 +939,7 @@ namespace SAM.Picker
             {
                 Debug.WriteLine(_($"Missing header_image for app {id}"));
             }
+            return _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
 
             Debug.WriteLine(_($"No image URL found for app {id}"));
             return null;

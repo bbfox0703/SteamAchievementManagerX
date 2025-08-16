@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="..\\SAM.Picker\\GameList.cs" Link="GameList.cs" />
     <Compile Include="..\\SAM.Picker\\ImageUrlValidator.cs" Link="ImageUrlValidator.cs" />
+    <Compile Include="..\\SAM.Picker\\GameImageUrlResolver.cs" Link="GameImageUrlResolver.cs" />
     <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
