@@ -11,7 +11,7 @@ namespace SAM.Picker
     internal static class GameList
     {
         // Maximum allowed size for the games.xml download.
-        internal const int MaxDownloadBytes = 2 * 1024 * 1024; // 2 MB
+        internal const int MaxDownloadBytes = 4 * 1024 * 1024; // 4 MB
 
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
