@@ -2,16 +2,16 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
+#nullable enable
+
 namespace SAM.Picker
 {
     internal static class GameImageUrlResolver
     {
-#pragma warning disable CS8632
         internal static string? GetGameImageUrl(Func<uint, string, string?> getAppData, uint id, string language)
-        
+
         {
             string? candidate;
-#pragma warning restore CS8632
 
             candidate = getAppData(id, $"small_capsule/{language}");
             if (string.IsNullOrEmpty(candidate) == false)
