@@ -942,8 +942,6 @@ namespace SAM.Picker
             }
             return _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
 
-            Debug.WriteLine(_($"No image URL found for app {id}"));
-            return null;
         }
 
         private void AddGameToLogoQueue(GameInfo info)
