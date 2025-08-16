@@ -1,10 +1,12 @@
 using System;
 using System.Drawing;
+using System.Runtime.Versioning;
 using SAM.Picker;
 using Xunit;
 
 public class LogoResizeTests
 {
+    [SupportedOSPlatform("windows")]
     [Fact]
     public void OversizedLogoIsResizedToExpectedSize()
     {
