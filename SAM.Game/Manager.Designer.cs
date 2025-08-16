@@ -59,7 +59,7 @@
             _StatisticsTabPage = new System.Windows.Forms.TabPage();
             _EnableStatsEditingCheckBox = new System.Windows.Forms.CheckBox();
             _StatisticsDataGridView = new System.Windows.Forms.DataGridView();
-            _TimeNowtimer = new System.Windows.Forms.Timer(components);
+            _timeNowTimer = new System.Windows.Forms.Timer(components);
             _submitAchievementsTimer = new System.Windows.Forms.Timer(components);
             _idleTimer = new System.Windows.Forms.Timer(components);
             _ToolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
@@ -448,11 +448,11 @@
             _StatisticsDataGridView.CellEndEdit += OnStatCellEndEdit;
             _StatisticsDataGridView.DataError += OnStatDataError;
             // 
-            // _TimeNowtimer
-            // 
-            _TimeNowtimer.Enabled = true;
-            _TimeNowtimer.Interval = 500;
-            _TimeNowtimer.Tick += _TimeNowtimer_Tick;
+            // _timeNowTimer
+            //
+            _timeNowTimer.Enabled = true;
+            _timeNowTimer.Interval = 500;
+            _timeNowTimer.Tick += _timeNowTimer_Tick;
             // 
             // _submitAchievementsTimer
             // 
@@ -530,7 +530,7 @@
         private System.Windows.Forms.ColumnHeader _AchievementIDColumnHeader;
         private System.Windows.Forms.ColumnHeader _AchievementTimerColumnHeader;
         private System.Windows.Forms.ToolStripLabel _TimeNowLabel;
-        private System.Windows.Forms.Timer _TimeNowtimer;
+        private System.Windows.Forms.Timer _timeNowTimer;
         private System.Windows.Forms.ToolStripLabel AddTimerLabel;
         private System.Windows.Forms.ToolStripTextBox _AddTimerTextBox;
         private System.Windows.Forms.ToolStripButton _AddTimerButton;
