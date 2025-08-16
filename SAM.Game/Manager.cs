@@ -1301,7 +1301,7 @@ namespace SAM.Game
         private void _TimerSwitchButton_Click(object sender, EventArgs e)
         {
             // Toggle the timer's Enabled state
-            _SumbitAchievementsTimer.Enabled = !_SumbitAchievementsTimer.Enabled;
+            _submitAchievementsTimer.Enabled = !_submitAchievementsTimer.Enabled;
 
             // Update the button's text to reflect the new state
             UpdateButtonText();
@@ -1338,7 +1338,7 @@ namespace SAM.Game
         private void UpdateButtonText()
         {
             // Change the button's text based on the timer's current state
-            if (_SumbitAchievementsTimer.Enabled)
+            if (_submitAchievementsTimer.Enabled)
             {
                 _TimerSwitchButton.Text = "Disable Timer";
             }
@@ -1377,7 +1377,7 @@ namespace SAM.Game
             }
         }
 
-        private void _SumbitAchievementsTimer_Tick(object sender, EventArgs e)
+        private void _submitAchievementsTimer_Tick(object sender, EventArgs e)
         {
             bool shouldTriggerStore = false; // Flag to determine if we need to trigger the commit button
             int seconds = DateTime.Now.Second;
