@@ -704,9 +704,16 @@ namespace SAM.Picker
                     continue;
                 }
 
+                if (uri == null)
+                {
+                    continue;
+                }
+
+                Uri nonNullUri = uri;
+
                 try
                 {
-                    var (data, contentType) = this.DownloadDataAsync(uri).GetAwaiter().GetResult();
+                    var (data, contentType) = this.DownloadDataAsync(nonNullUri).GetAwaiter().GetResult();
                     if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
                     {
                         throw new InvalidDataException("Invalid content type");
