@@ -1,3 +1,4 @@
+using System;
 using SAM.Picker;
 using Xunit;
 
@@ -9,7 +10,8 @@ public class GetGameImageUrlTests
         uint id = 123;
         string language = "english";
 
-        string result = GameImageUrlResolver.GetGameImageUrl((a, b) => null, id, language);
+        Func<uint, string, string?> getAppData = (a, b) => null;
+        string? result = GameImageUrlResolver.GetGameImageUrl(getAppData, id, language);
         if (result == null)
         {
             result = $"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg";
