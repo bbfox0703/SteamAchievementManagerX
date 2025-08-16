@@ -471,7 +471,7 @@ namespace SAM.Picker
                 var nodes = navigator.Select("/games/game");
                 while (nodes.MoveNext() == true)
                 {
-                    string type = nodes.Current?.GetAttribute("type", "");
+                    string type = nodes.Current?.GetAttribute("type", "") ?? string.Empty;
                     if (nodes.Current == null)
                     {
                         continue;
