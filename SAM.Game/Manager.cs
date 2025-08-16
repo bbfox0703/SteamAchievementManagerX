@@ -67,7 +67,7 @@ namespace SAM.Game
 
         //private API.Callback<APITypes.UserStatsStored> UserStatsStoredCallback;
         // *****************************************************************
-        private Dictionary<string, int> achievementCounters = new Dictionary<string, int>();
+        private Dictionary<string, int> _achievementCounters = new();
 
         private bool _moveRight = true;
         private POINT _lastMousePos;
@@ -648,12 +648,12 @@ namespace SAM.Game
                 return;
             }
 
-            // Synchronize ListView with achievementCounters
+            // Synchronize ListView with _achievementCounters
             foreach (ListViewItem item in _AchievementListView.Items)
             {
                 string key = item.SubItems[3].Text; // 3rd column is Key
 
-                if (achievementCounters.TryGetValue(key, out int counter))
+                if (_achievementCounters.TryGetValue(key, out int counter))
                 {
                     item.SubItems[4].Text = counter.ToString(); // Update the Counter column
                 }
@@ -1329,7 +1329,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = timerValue.ToString(); // Fifth column (Display Index 4)
 
                 string key = item.SubItems[3].Text;
-                achievementCounters[key] = timerValue; // Store value for refresh
+                _achievementCounters[key] = timerValue; // Store value for refresh
             }
 
             //MessageBox.Show("Selected rows have been successfully updated!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1363,7 +1363,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = counter.ToString();
 
                 // Update the Dictionary
-                achievementCounters[key] = counter;
+                _achievementCounters[key] = counter;
 
                 // If the counter becomes 0, check the row and set the flag
                 if (counter == 0)
@@ -1372,7 +1372,7 @@ namespace SAM.Game
                     shouldTriggerStore = true; // Set the flag to trigger the store action
 
                     item.SubItems[4].Text = "-1000";
-                    achievementCounters[key] = -1; // Update the dictionary as well
+                    _achievementCounters[key] = -1; // Update the dictionary as well
                 }
             }
         }
