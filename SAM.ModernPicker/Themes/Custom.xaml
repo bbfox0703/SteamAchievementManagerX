@@ -1,0 +1,3 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+    <SolidColorBrush x:Key="SystemAccentColor" Color="#FF9E4D83" />
+</ResourceDictionary>
