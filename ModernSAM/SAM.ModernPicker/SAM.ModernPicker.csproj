@@ -13,12 +13,35 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </ApplicationDefinition>
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.241001000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" PrivateAssets="all" />
   </ItemGroup>
+  <UsingTask TaskName="Microsoft.Build.AppxPackage.RemovePayloadDuplicates"
+             TaskFactory="RoslynCodeTaskFactory" AssemblyName="Microsoft.Build.AppxPackage">
+    <Task>
+      <Reference Include="Microsoft.Build.Framework" />
+      <Reference Include="Microsoft.Build.Utilities.Core" />
+      <Code Type="Class" Language="cs"><![CDATA[
+        using Microsoft.Build.Framework;
+        using Microsoft.Build.Utilities;
+
+        namespace Microsoft.Build.AppxPackage;
+
+        public sealed class RemovePayloadDuplicates : Task
+        {
+            [Required]
+            public ITaskItem[]? Inputs { get; set; }
+
+            [Output]
+            public ITaskItem[]? Filtered { get; set; }
+
+            public override bool Execute()
+            {
+                Filtered = Inputs;
+                return true;
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
 </Project>
