@@ -9,7 +9,8 @@
     <EnableDefaultItems>false</EnableDefaultItems>
     <AssemblyName>ModernSAM</AssemblyName>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
