@@ -1,5 +1,5 @@
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppRuntime;
+using Microsoft.Windows.AppLifecycle;
 using System;
 using System.Runtime.InteropServices;
 
