@@ -14,8 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SAM.Picker.Tests", "SAM.Pic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SAM.Game.Tests", "SAM.Game.Tests\SAM.Game.Tests.csproj", "{4169025E-B068-4FBE-9D60-863C1C5CF0FA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SAM.ModernPicker", "SAM.ModernPicker\SAM.ModernPicker.csproj", "{ED055D02-FF72-44E8-B241-773A3D9A009F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -46,10 +44,6 @@ Global
 		{4169025E-B068-4FBE-9D60-863C1C5CF0FA}.Debug|x64.Build.0 = Debug|x64
 		{4169025E-B068-4FBE-9D60-863C1C5CF0FA}.Release|x64.ActiveCfg = Release|x64
 		{4169025E-B068-4FBE-9D60-863C1C5CF0FA}.Release|x64.Build.0 = Release|x64
-		{ED055D02-FF72-44E8-B241-773A3D9A009F}.Debug|x64.ActiveCfg = Debug|x64
-		{ED055D02-FF72-44E8-B241-773A3D9A009F}.Debug|x64.Build.0 = Debug|x64
-		{ED055D02-FF72-44E8-B241-773A3D9A009F}.Release|x64.ActiveCfg = Release|x64
-		{ED055D02-FF72-44E8-B241-773A3D9A009F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
