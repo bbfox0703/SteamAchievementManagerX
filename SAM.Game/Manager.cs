@@ -23,7 +23,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
@@ -34,6 +33,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using SAM.WinForms;
+using SAM.API;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using static SAM.Game.InvariantShorthand;
@@ -273,12 +273,12 @@ namespace SAM.Game
             {
                 var originalId = id;
                 id = Uri.EscapeDataString(id);
-                Debug.WriteLine($"Renaming icon id '{originalId}' to '{id}' for cache file name.");
+                DebugLogger.Log($"Renaming icon id '{originalId}' to '{id}' for cache file name.");
             }
 
             var fileName = id + "_" + (info.IsAchieved == true ? "achieved" : "locked") + ".png";
             var path = Path.Combine(this._IconCacheDirectory, fileName);
-            Debug.WriteLine($"Cache path for icon '{info.Id}' resolved to '{path}'.");
+            DebugLogger.Log($"Cache path for icon '{info.Id}' resolved to '{path}'.");
             return path;
         }
 
@@ -318,7 +318,7 @@ namespace SAM.Game
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex);
+                DebugLogger.Log(ex);
             }
 
             this.AddAchievementIcon(info, bitmap);
@@ -346,7 +346,7 @@ namespace SAM.Game
                 Path = $"/steamcommunity/public/images/apps/{this._GameId}/{Uri.EscapeDataString(fileName)}"
             };
 
-            Debug.WriteLine($"Downloading icon from '{builder.Uri}'.");
+            DebugLogger.Log($"Downloading icon from '{builder.Uri}'.");
 
             using var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
             using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
@@ -388,7 +388,7 @@ namespace SAM.Game
                     {
                         try
                         {
-                            Debug.WriteLine($"Caching icon '{info.Id}' to '{cachePath}'.");
+                            DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
                             File.WriteAllBytes(cachePath, data);
                         }
                         catch (Exception)
@@ -886,7 +886,7 @@ namespace SAM.Game
                 {
                     try
                     {
-                        Debug.WriteLine($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
+                        DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
                         if (File.Exists(cachePath) == true)
                         {
                             var bytes = File.ReadAllBytes(cachePath);
@@ -902,7 +902,7 @@ namespace SAM.Game
                                     if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
                                     {
                                         this.AddAchievementIcon(info, image);
-                                        Debug.WriteLine($"Loaded icon '{info.Id}' from cache.");
+                                        DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
                                         return;
                                     }
                                 }
