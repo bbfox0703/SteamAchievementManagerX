@@ -1,6 +1,6 @@
 using System;
-using System.Diagnostics;
 using System.IO;
+using SAM.API;
 
 #nullable enable
 
@@ -22,12 +22,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine($"Invalid small_capsule path for app {id} language {language}: {candidate}");
+                    DebugLogger.Log($"Invalid small_capsule path for app {id} language {language}: {candidate}");
                 }
             }
             else
             {
-                Debug.WriteLine($"Missing small_capsule for app {id} language {language}");
+                DebugLogger.Log($"Missing small_capsule for app {id} language {language}");
             }
 
             if (language != "english")
@@ -41,12 +41,12 @@ namespace SAM.Picker
                     }
                     else
                     {
-                        Debug.WriteLine($"Invalid small_capsule path for app {id} language english: {candidate}");
+                        DebugLogger.Log($"Invalid small_capsule path for app {id} language english: {candidate}");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"Missing small_capsule for app {id} language english");
+                    DebugLogger.Log($"Missing small_capsule for app {id} language english");
                 }
             }
 
@@ -59,12 +59,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine($"Invalid logo path for app {id}: {candidate}");
+                    DebugLogger.Log($"Invalid logo path for app {id}: {candidate}");
                 }
             }
             else
             {
-                Debug.WriteLine($"Missing logo for app {id}");
+                DebugLogger.Log($"Missing logo for app {id}");
             }
 
             candidate = getAppData(id, "library_600x900");
@@ -76,12 +76,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine($"Invalid library_600x900 path for app {id}: {candidate}");
+                    DebugLogger.Log($"Invalid library_600x900 path for app {id}: {candidate}");
                 }
             }
             else
             {
-                Debug.WriteLine($"Missing library_600x900 for app {id}");
+                DebugLogger.Log($"Missing library_600x900 for app {id}");
             }
 
             candidate = getAppData(id, "header_image");
@@ -93,12 +93,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine($"Invalid header_image path for app {id}: {candidate}");
+                    DebugLogger.Log($"Invalid header_image path for app {id}: {candidate}");
                 }
             }
             else
             {
-                Debug.WriteLine($"Missing header_image for app {id}");
+                DebugLogger.Log($"Missing header_image for app {id}");
             }
 
             return null;

@@ -38,6 +38,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
+using SAM.API;
 using SAM.WinForms;
 using Microsoft.Win32;
 using static SAM.Picker.InvariantShorthand;
@@ -405,7 +406,7 @@ namespace SAM.Picker
                 var contentLength = response.Content.Headers.ContentLength;
                 if (contentLength == null)
                 {
-                    Debug.WriteLine(_($"Missing Content-Length header for {response.RequestMessage!.RequestUri}"));
+                    DebugLogger.Log(_($"Missing Content-Length header for {response.RequestMessage!.RequestUri}"));
                 }
                 else if (contentLength.Value > MaxLogoBytes)
                 {
@@ -699,7 +700,7 @@ namespace SAM.Picker
 
                 if (ImageUrlValidator.TryCreateUri(url, out var uri) == false)
                 {
-                    Debug.WriteLine(_($"Invalid image URL for app {info.Id}: {url}"));
+                    DebugLogger.Log(_($"Invalid image URL for app {info.Id}: {url}"));
                     continue;
                 }
 
@@ -765,7 +766,7 @@ namespace SAM.Picker
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(_($"Failed to download image for app {info.Id} from {url}: {ex}"));
+                    DebugLogger.Log(_($"Failed to download image for app {info.Id} from {url}: {ex}"));
                 }
             }
 
@@ -883,12 +884,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine(_($"Invalid small_capsule path for app {id} language {currentLanguage}: {candidate}"));
+                    DebugLogger.Log(_($"Invalid small_capsule path for app {id} language {currentLanguage}: {candidate}"));
                 }
             }
             else
             {
-                Debug.WriteLine(_($"Missing small_capsule for app {id} language {currentLanguage}"));
+                DebugLogger.Log(_($"Missing small_capsule for app {id} language {currentLanguage}"));
             }
 
             if (currentLanguage != "english")
@@ -902,12 +903,12 @@ namespace SAM.Picker
                     }
                     else
                     {
-                        Debug.WriteLine(_($"Invalid small_capsule path for app {id} language english: {candidate}"));
+                        DebugLogger.Log(_($"Invalid small_capsule path for app {id} language english: {candidate}"));
                     }
                 }
                 else
                 {
-                    Debug.WriteLine(_($"Missing small_capsule for app {id} language english"));
+                    DebugLogger.Log(_($"Missing small_capsule for app {id} language english"));
                 }
             }
 
@@ -920,12 +921,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine(_($"Invalid logo path for app {id}: {candidate}"));
+                    DebugLogger.Log(_($"Invalid logo path for app {id}: {candidate}"));
                 }
             }
             else
             {
-                Debug.WriteLine(_($"Missing logo for app {id}"));
+                DebugLogger.Log(_($"Missing logo for app {id}"));
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "library_600x900");
@@ -937,12 +938,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine(_($"Invalid library_600x900 path for app {id}: {candidate}"));
+                    DebugLogger.Log(_($"Invalid library_600x900 path for app {id}: {candidate}"));
                 }
             }
             else
             {
-                Debug.WriteLine(_($"Missing library_600x900 for app {id}"));
+                DebugLogger.Log(_($"Missing library_600x900 for app {id}"));
             }
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, "header_image");
@@ -954,12 +955,12 @@ namespace SAM.Picker
                 }
                 else
                 {
-                    Debug.WriteLine(_($"Invalid header_image path for app {id}: {candidate}"));
+                    DebugLogger.Log(_($"Invalid header_image path for app {id}: {candidate}"));
                 }
             }
             else
             {
-                Debug.WriteLine(_($"Missing header_image for app {id}"));
+                DebugLogger.Log(_($"Missing header_image for app {id}"));
             }
             return _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
 
@@ -1063,7 +1064,7 @@ namespace SAM.Picker
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                DebugLogger.Log(ex);
             }
         }
 
@@ -1118,7 +1119,7 @@ namespace SAM.Picker
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                DebugLogger.Log(ex);
             }
         }
 
