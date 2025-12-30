@@ -213,6 +213,17 @@ namespace SAM.WinForms
             int useDark = dark ? 1 : 0;
             _ = DwmSetWindowAttribute(control.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
             _ = SetWindowTheme(control.Handle, dark ? "DarkMode_Explorer" : "Explorer", null);
+
+            // For ListView, also apply theme to the header control
+            if (control is ListView listView)
+            {
+                IntPtr headerHandle = SendMessage(listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+                if (headerHandle != IntPtr.Zero)
+                {
+                    _ = DwmSetWindowAttribute(headerHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
+                    _ = SetWindowTheme(headerHandle, dark ? "ItemsView" : "Explorer", null);
+                }
+            }
         }
 
         private static void OnListViewPaint(object? sender, PaintEventArgs e)
@@ -306,6 +317,7 @@ namespace SAM.WinForms
                 }
             }
 
+            // Draw text
             var bounds = e.Bounds;
             bounds.Inflate(-2, 0);
             StringFormat format = new()
@@ -316,6 +328,15 @@ namespace SAM.WinForms
             var text = e.Header?.Text ?? string.Empty;
             var font = list.Font ?? SystemFonts.DefaultFont;
             e.Graphics.DrawString(text, font, fore, bounds, format);
+
+            // Draw grid line (separator) on the right edge of the column header
+            // Use a slightly darker/lighter color based on the background
+            Color gridColor = backColor.GetBrightness() < 0.5f
+                ? ControlPaint.Light(backColor, 0.3f)  // Dark theme: lighter grid line
+                : ControlPaint.Dark(backColor, 0.1f);   // Light theme: darker grid line
+
+            using var gridPen = new Pen(gridColor);
+            e.Graphics.DrawLine(gridPen, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
         }
 
         private static void OnListViewDrawItem(object? sender, DrawListViewItemEventArgs e)
@@ -399,12 +420,17 @@ namespace SAM.WinForms
         }
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int LVM_GETHEADER = 0x1000 + 31;
+        private const int HDM_LAYOUT = 0x1200 + 5;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int attrValue, int attrSize);
 
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
         private static extern int SetWindowTheme(IntPtr hWnd, string? pszSubAppName, string? pszSubIdList);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
     }
 }
 
