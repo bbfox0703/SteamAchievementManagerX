@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -12,8 +13,14 @@ namespace SAM.WinForms
     public static class ThemeHelper
     {
         private static readonly List<(Type Type, Action<object, Color, Color> Handler)> _handlers = new();
-        private static readonly Dictionary<TabControl, (Color Back, Color Fore)> _tabControlColors = new();
-        private static readonly Dictionary<ListView, (Color Back, Color Fore)> _listViewColors = new();
+        private static readonly ConditionalWeakTable<TabControl, ColorInfo> _tabControlColors = new();
+        private static readonly ConditionalWeakTable<ListView, ColorInfo> _listViewColors = new();
+
+        private sealed class ColorInfo
+        {
+            public Color Back { get; set; }
+            public Color Fore { get; set; }
+        }
 
         static ThemeHelper()
         {
@@ -50,7 +57,12 @@ namespace SAM.WinForms
                 list.DrawSubItem += OnListViewDrawSubItem;
                 list.Paint -= OnListViewPaint;
                 list.Paint += OnListViewPaint;
-                _listViewColors[list] = (back, fore);
+                list.Disposed -= OnListViewDisposed;
+                list.Disposed += OnListViewDisposed;
+
+                var colorInfo = _listViewColors.GetValue(list, _ => new ColorInfo());
+                colorInfo.Back = back;
+                colorInfo.Fore = fore;
 
                 foreach (ColumnHeader column in list.Columns)
                 {
@@ -139,7 +151,13 @@ namespace SAM.WinForms
                 tabs.DrawItem += OnTabControlDrawItem;
                 tabs.Paint -= OnTabControlPaint;
                 tabs.Paint += OnTabControlPaint;
-                _tabControlColors[tabs] = (back, fore);
+                tabs.Disposed -= OnTabControlDisposed;
+                tabs.Disposed += OnTabControlDisposed;
+
+                var colorInfo = _tabControlColors.GetValue(tabs, _ => new ColorInfo());
+                colorInfo.Back = back;
+                colorInfo.Fore = fore;
+
                 ApplyScrollBarTheme(tabs, back);
             });
 
@@ -234,10 +252,10 @@ namespace SAM.WinForms
             }
 
             // Get stored colors for this ListView
-            if (_listViewColors.TryGetValue(list, out var colors))
+            if (_listViewColors.TryGetValue(list, out var colorInfo))
             {
-                // Calculate the total width of all columns
-                int totalColumnsWidth = 0;
+                // Calculate the total width of all columns - use long to avoid overflow
+                long totalColumnsWidth = 0;
                 foreach (ColumnHeader col in list.Columns)
                 {
                     totalColumnsWidth += col.Width;
@@ -259,11 +277,26 @@ namespace SAM.WinForms
                 int listWidth = list.ClientRectangle.Width;
                 if (totalColumnsWidth < listWidth && headerHeight > 0)
                 {
-                    Rectangle remainingRect = new Rectangle(totalColumnsWidth, 0, listWidth - totalColumnsWidth, headerHeight);
-                    using var back = new SolidBrush(colors.Back);
+                    Rectangle remainingRect = new Rectangle((int)totalColumnsWidth, 0, (int)(listWidth - totalColumnsWidth), headerHeight);
+                    using var back = new SolidBrush(colorInfo.Back);
                     e.Graphics.FillRectangle(back, remainingRect);
                 }
             }
+        }
+
+        private static void OnListViewDisposed(object? sender, EventArgs e)
+        {
+            if (sender is not ListView list)
+            {
+                return;
+            }
+
+            // Unregister all event handlers
+            list.DrawColumnHeader -= OnListViewDrawColumnHeader;
+            list.DrawItem -= OnListViewDrawItem;
+            list.DrawSubItem -= OnListViewDrawSubItem;
+            list.Paint -= OnListViewPaint;
+            list.Disposed -= OnListViewDisposed;
         }
 
         private static void OnListViewDrawColumnHeader(object? sender, DrawListViewColumnHeaderEventArgs e)
@@ -276,10 +309,10 @@ namespace SAM.WinForms
             // Get stored colors for this ListView
             Color backColor = list.BackColor;
             Color foreColor = list.ForeColor;
-            if (_listViewColors.TryGetValue(list, out var colors))
+            if (_listViewColors.TryGetValue(list, out var colorInfo))
             {
-                backColor = colors.Back;
-                foreColor = colors.Fore;
+                backColor = colorInfo.Back;
+                foreColor = colorInfo.Fore;
             }
 
             using var back = new SolidBrush(backColor);
@@ -301,8 +334,8 @@ namespace SAM.WinForms
 
             if (headerIndex == 0)
             {
-                // Calculate total width of all columns
-                int totalColumnsWidth = 0;
+                // Calculate total width of all columns - use long to avoid overflow
+                long totalColumnsWidth = 0;
                 foreach (ColumnHeader col in list.Columns)
                 {
                     totalColumnsWidth += col.Width;
@@ -312,7 +345,7 @@ namespace SAM.WinForms
                 int listWidth = list.ClientRectangle.Width;
                 if (totalColumnsWidth < listWidth)
                 {
-                    Rectangle remainingRect = new Rectangle(totalColumnsWidth, e.Bounds.Y, listWidth - totalColumnsWidth, e.Bounds.Height);
+                    Rectangle remainingRect = new Rectangle((int)totalColumnsWidth, e.Bounds.Y, (int)(listWidth - totalColumnsWidth), e.Bounds.Height);
                     e.Graphics.FillRectangle(back, remainingRect);
                 }
             }
@@ -357,7 +390,7 @@ namespace SAM.WinForms
             }
 
             // Get stored colors for this TabControl
-            if (_tabControlColors.TryGetValue(tabs, out var colors))
+            if (_tabControlColors.TryGetValue(tabs, out var colorInfo))
             {
                 // Calculate the position after the last tab
                 Rectangle lastTabRect = tabs.GetTabRect(tabs.TabCount - 1);
@@ -368,10 +401,23 @@ namespace SAM.WinForms
                 if (startX < tabs.Width)
                 {
                     Rectangle remainingRect = new Rectangle(startX, 0, tabs.Width - startX, headerHeight);
-                    using var back = new SolidBrush(colors.Back);
+                    using var back = new SolidBrush(colorInfo.Back);
                     e.Graphics.FillRectangle(back, remainingRect);
                 }
             }
+        }
+
+        private static void OnTabControlDisposed(object? sender, EventArgs e)
+        {
+            if (sender is not TabControl tabs)
+            {
+                return;
+            }
+
+            // Unregister all event handlers
+            tabs.DrawItem -= OnTabControlDrawItem;
+            tabs.Paint -= OnTabControlPaint;
+            tabs.Disposed -= OnTabControlDisposed;
         }
 
         private static void OnTabControlDrawItem(object? sender, DrawItemEventArgs e)
@@ -386,10 +432,10 @@ namespace SAM.WinForms
             // Get stored colors for this TabControl
             Color backColor = tabs.BackColor;
             Color foreColor = tabs.ForeColor;
-            if (_tabControlColors.TryGetValue(tabs, out var colors))
+            if (_tabControlColors.TryGetValue(tabs, out var colorInfo))
             {
-                backColor = colors.Back;
-                foreColor = colors.Fore;
+                backColor = colorInfo.Back;
+                foreColor = colorInfo.Fore;
             }
 
             using var back = new SolidBrush(backColor);
@@ -421,7 +467,6 @@ namespace SAM.WinForms
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int LVM_GETHEADER = 0x1000 + 31;
-        private const int HDM_LAYOUT = 0x1200 + 5;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int attrValue, int attrSize);
