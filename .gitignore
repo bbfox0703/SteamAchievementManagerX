@@ -12,6 +12,8 @@
 **/Properties/launchSettings.json
 private/
 upload/
+.claude
+Claude.MD
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
