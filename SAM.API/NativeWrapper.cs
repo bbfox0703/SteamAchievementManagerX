@@ -33,7 +33,7 @@ namespace SAM.API
 
         public override string ToString()
         {
-            string format = IntPtr.Size == 8 ? "X16" : "X8";
+            const string format = "X16"; // x64 pointer is always 8 bytes
             return $"Steam Interface<{typeof(TNativeFunctions)}> #{this.ObjectAddress.ToInt64().ToString(format)}";
         }
 

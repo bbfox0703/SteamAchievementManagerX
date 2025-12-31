@@ -20,7 +20,6 @@
  *    distribution.
  */
 
- #if WINDOWS
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -149,7 +148,7 @@ namespace SAM.API
             }
 
             var binPath = Path.Combine(path, "bin");
-            string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
+            const string library = "steamclient64.dll"; // x64-only project
             string libraryPath = Path.Combine(path, library);
             if (File.Exists(libraryPath) == false)
             {
@@ -250,33 +249,3 @@ namespace SAM.API
         }
     }
 }
-#else
-using System;
-using Steamworks;
-
-namespace SAM.API
-{
-    public static class Steam
-    {
-        public static string GetInstallPath() =>
-            Environment.GetEnvironmentVariable("STEAM_PATH");
-
-        public static bool Load() => SteamAPI.Init();
-
-        public static void Unload() => SteamAPI.Shutdown();
-
-        public static TClass CreateInterface<TClass>(string version)
-            where TClass : INativeWrapper, new() => default;
-
-        public static bool GetCallback(int pipe, out Types.CallbackMessage message, out int call)
-        {
-            SteamAPI.RunCallbacks();
-            message = default;
-            call = 0;
-            return false;
-        }
-
-        public static bool FreeLastCallback(int pipe) => true;
-    }
-}
-#endif
