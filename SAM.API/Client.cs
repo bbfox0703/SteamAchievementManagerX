@@ -20,7 +20,6 @@
  *    distribution.
  */
 
- #if WINDOWS
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -159,56 +158,3 @@ namespace SAM.API
         }
     }
 }
-#else
-using System;
-using Steamworks;
-
-namespace SAM.API
-{
-    public class Client : IDisposable
-    {
-        private bool _IsDisposed;
-
-        public void Initialize(long appId)
-        {
-            if (!SteamAPI.Init())
-            {
-                throw new ClientInitializeException(ClientInitializeFailure.Load, "failed to init SteamAPI");
-            }
-        }
-
-        ~Client()
-        {
-            Dispose(false);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_IsDisposed)
-            {
-                return;
-            }
-
-            SteamAPI.Shutdown();
-            _IsDisposed = true;
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        public TCallback CreateAndRegisterCallback<TCallback>()
-            where TCallback : ICallback, new()
-        {
-            return new TCallback();
-        }
-
-        public void RunCallbacks(bool server)
-        {
-            SteamAPI.RunCallbacks();
-        }
-    }
-}
-#endif
