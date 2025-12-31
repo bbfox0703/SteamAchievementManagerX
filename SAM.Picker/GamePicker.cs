@@ -166,7 +166,7 @@ namespace SAM.Picker
             this._SteamClient = client;
             this._HttpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(30),
+                Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds),
             };
             this.FormClosed += (_, _) =>
             {
@@ -386,6 +386,7 @@ namespace SAM.Picker
 
         private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
         private const int MaxLogoDimension = 1024; // px
+        private const int HttpClientTimeoutSeconds = 30;
 
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
@@ -677,13 +678,23 @@ namespace SAM.Picker
                                     return;
                                 }
                             }
-                            catch (ArgumentException)
+                            catch (ArgumentException ex)
                             {
-                                try { File.Delete(cacheFile); } catch { }
+                                DebugLogger.Log($"Invalid image data, deleting cache: {cacheFile}", ex);
+                                try { File.Delete(cacheFile); }
+                                catch (Exception deleteEx)
+                                {
+                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
+                                }
                             }
-                            catch (OutOfMemoryException)
+                            catch (OutOfMemoryException ex)
                             {
-                                try { File.Delete(cacheFile); } catch { }
+                                DebugLogger.Log($"Out of memory loading image, deleting cache: {cacheFile}", ex);
+                                try { File.Delete(cacheFile); }
+                                catch (Exception deleteEx)
+                                {
+                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
+                                }
                             }
                         }
                     }
@@ -713,7 +724,10 @@ namespace SAM.Picker
 
                 try
                 {
-                    var (data, contentType) = this.DownloadDataAsync(nonNullUri).GetAwaiter().GetResult();
+                    // Use Task.Run to avoid deadlock when blocking on async operations
+                    var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
+                        await this.DownloadDataAsync(nonNullUri).ConfigureAwait(false)
+                    ).GetAwaiter().GetResult();
                     if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
                     {
                         throw new InvalidDataException("Invalid content type");

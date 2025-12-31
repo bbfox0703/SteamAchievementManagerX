@@ -13,6 +13,12 @@ namespace SAM.Picker
         // Maximum allowed size for the games.xml download.
         internal const int MaxDownloadBytes = 4 * 1024 * 1024; // 4 MB
 
+        // Cache expiration time in minutes
+        private const int CacheExpirationMinutes = 30;
+
+        // Buffer size for stream reading
+        private const int StreamReadBufferSize = 81920; // 80 KB
+
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
             if (httpClient == null)
@@ -22,11 +28,11 @@ namespace SAM.Picker
 
             string localPath = Path.Combine(baseDirectory, "games.xml");
 
-            // use existing file if it was downloaded within the last 30 minutes
+            // use existing file if it was downloaded within the last cache expiration time
             if (File.Exists(localPath) == true)
             {
                 DateTime lastWrite = File.GetLastWriteTimeUtc(localPath);
-                if (DateTime.UtcNow - lastWrite < TimeSpan.FromMinutes(30))
+                if (DateTime.UtcNow - lastWrite < TimeSpan.FromMinutes(CacheExpirationMinutes))
                 {
                     usedLocal = true;
                     return File.ReadAllBytes(localPath);
@@ -38,19 +44,23 @@ namespace SAM.Picker
 
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("https://gib.me/sam/games.xml"));
-                using var response = httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
-                    .GetAwaiter().GetResult();
-                response.EnsureSuccessStatusCode();
-
-                var contentLength = response.Content.Headers.ContentLength;
-                if (contentLength == null || contentLength.Value > MaxDownloadBytes)
+                // Use Task.Run to avoid deadlock when blocking on async operations
+                bytes = System.Threading.Tasks.Task.Run(async () =>
                 {
-                    throw new HttpRequestException("Response too large or missing length");
-                }
+                    using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("https://gib.me/sam/games.xml"));
+                    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                        .ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
 
-                using var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
-                bytes = ReadWithLimit(stream, MaxDownloadBytes);
+                    var contentLength = response.Content.Headers.ContentLength;
+                    if (contentLength == null || contentLength.Value > MaxDownloadBytes)
+                    {
+                        throw new HttpRequestException("Response too large or missing length");
+                    }
+
+                    using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    return ReadWithLimit(stream, MaxDownloadBytes);
+                }).GetAwaiter().GetResult();
 
                 if (bytes != null)
                 {
@@ -122,7 +132,7 @@ namespace SAM.Picker
         private static byte[] ReadWithLimit(Stream stream, int maxBytes)
         {
             using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
+            byte[] buffer = new byte[StreamReadBufferSize];
             int read;
             int total = 0;
             while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
