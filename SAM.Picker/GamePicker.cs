@@ -54,6 +54,8 @@ namespace SAM.Picker
         private readonly Dictionary<uint, GameInfo> _Games;
         private readonly List<GameInfo> _FilteredGames;
 
+        private readonly object _GamesLock;
+        private readonly object _FilteredGamesLock;
         private readonly object _LogoLock;
         private readonly HashSet<string> _LogosAttempting;
         private readonly HashSet<string> _LogosAttempted;
@@ -134,6 +136,8 @@ namespace SAM.Picker
         {
             this._Games = new();
             this._FilteredGames = new();
+            this._GamesLock = new();
+            this._FilteredGamesLock = new();
             this._LogoLock = new();
             this._LogosAttempting = new();
             this._LogosAttempted = new();
@@ -537,8 +541,18 @@ namespace SAM.Picker
             var wantMods = this._FilterModsMenuItem.Checked == true;
             var wantJunk = this._FilterJunkMenuItem.Checked == true;
 
-            this._FilteredGames.Clear();
-            foreach (var info in this._Games.Values.OrderBy(gi => gi.Name))
+            // Create a snapshot of games while holding the lock
+            List<GameInfo> gamesSnapshot;
+            int totalGamesCount;
+            lock (this._GamesLock)
+            {
+                gamesSnapshot = this._Games.Values.OrderBy(gi => gi.Name).ToList();
+                totalGamesCount = this._Games.Count;
+            }
+
+            // Build filtered list from snapshot
+            var filteredList = new List<GameInfo>();
+            foreach (var info in gamesSnapshot)
             {
                 if (nameSearch != null &&
                     info.Name.IndexOf(nameSearch, StringComparison.OrdinalIgnoreCase) < 0)
@@ -559,28 +573,53 @@ namespace SAM.Picker
                     continue;
                 }
 
-                this._FilteredGames.Add(info);
+                filteredList.Add(info);
             }
 
-            this._GameListView.VirtualListSize = this._FilteredGames.Count;
-            this._PickerStatusLabel.Text =
-                $"Displaying {this._GameListView.Items.Count} games. Total {this._Games.Count} games.";
-
-            if (this._GameListView.Items.Count > 0)
+            // Update UI while preventing ListView paint events
+            this._GameListView.BeginUpdate();
+            try
             {
-                this._GameListView.Items[0].Selected = true;
-                this._GameListView.Select();
+                lock (this._FilteredGamesLock)
+                {
+                    this._FilteredGames.Clear();
+                    this._FilteredGames.AddRange(filteredList);
+                    this._GameListView.VirtualListSize = this._FilteredGames.Count;
+                }
+
+                this._PickerStatusLabel.Text =
+                    $"Displaying {this._GameListView.Items.Count} games. Total {totalGamesCount} games.";
+
+                if (this._GameListView.Items.Count > 0)
+                {
+                    this._GameListView.Items[0].Selected = true;
+                    this._GameListView.Select();
+                }
+            }
+            finally
+            {
+                this._GameListView.EndUpdate();
             }
         }
 
         private void OnGameListViewRetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            var info = this._FilteredGames[e.ItemIndex];
-            e.Item = info.Item = new()
+            lock (this._FilteredGamesLock)
             {
-                Text = info.Name,
-                ImageIndex = info.ImageIndex,
-            };
+                // Bounds check to prevent race condition
+                if (e.ItemIndex < 0 || e.ItemIndex >= this._FilteredGames.Count)
+                {
+                    e.Item = new ListViewItem("Loading...");
+                    return;
+                }
+
+                var info = this._FilteredGames[e.ItemIndex];
+                e.Item = info.Item = new()
+                {
+                    Text = info.Name,
+                    ImageIndex = info.ImageIndex,
+                };
+            }
         }
 
         private void OnGameListViewSearchForVirtualItem(object sender, SearchForVirtualItemEventArgs e)
@@ -590,51 +629,54 @@ namespace SAM.Picker
                 return;
             }
 
-            var count = this._FilteredGames.Count;
-            if (count < 2)
+            lock (this._FilteredGamesLock)
             {
-                return;
-            }
-
-            var text = e.Text ?? string.Empty;
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-
-            int startIndex = e.StartIndex;
-
-            Predicate<GameInfo> predicate;
-            /*if (e.IsPrefixSearch == true)*/
-            {
-                predicate = gi => gi.Name != null && gi.Name.StartsWith(text, StringComparison.CurrentCultureIgnoreCase);
-            }
-            /*else
-            {
-                predicate = gi => gi.Name != null && string.Compare(gi.Name, text, StringComparison.CurrentCultureIgnoreCase) == 0;
-            }*/
-
-            int index;
-            if (e.StartIndex >= count)
-            {
-                // starting from the last item in the list
-                index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
-            }
-            else if (startIndex <= 0)
-            {
-                // starting from the first item in the list
-                index = this._FilteredGames.FindIndex(0, count, predicate);
-            }
-            else
-            {
-                index = this._FilteredGames.FindIndex(startIndex, count - startIndex, predicate);
-                if (index < 0)
+                var count = this._FilteredGames.Count;
+                if (count < 2)
                 {
+                    return;
+                }
+
+                var text = e.Text ?? string.Empty;
+                if (string.IsNullOrEmpty(text))
+                {
+                    return;
+                }
+
+                int startIndex = e.StartIndex;
+
+                Predicate<GameInfo> predicate;
+                /*if (e.IsPrefixSearch == true)*/
+                {
+                    predicate = gi => gi.Name != null && gi.Name.StartsWith(text, StringComparison.CurrentCultureIgnoreCase);
+                }
+                /*else
+                {
+                    predicate = gi => gi.Name != null && string.Compare(gi.Name, text, StringComparison.CurrentCultureIgnoreCase) == 0;
+                }*/
+
+                int index;
+                if (e.StartIndex >= count)
+                {
+                    // starting from the last item in the list
                     index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
                 }
-            }
+                else if (startIndex <= 0)
+                {
+                    // starting from the first item in the list
+                    index = this._FilteredGames.FindIndex(0, count, predicate);
+                }
+                else
+                {
+                    index = this._FilteredGames.FindIndex(startIndex, count - startIndex, predicate);
+                    if (index < 0)
+                    {
+                        index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
+                    }
+                }
 
-            e.Index = index < 0 ? -1 : index;
+                e.Index = index < 0 ? -1 : index;
+            }
         }
 
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
@@ -1016,19 +1058,22 @@ namespace SAM.Picker
 
         private void AddGame(uint id, string type)
         {
-            if (this._Games.ContainsKey(id) == true)
+            lock (this._GamesLock)
             {
-                return;
-            }
+                if (this._Games.ContainsKey(id) == true)
+                {
+                    return;
+                }
 
-            if (this.OwnsGame(id) == false)
-            {
-                return;
-            }
+                if (this.OwnsGame(id) == false)
+                {
+                    return;
+                }
 
-            GameInfo info = new(id, type);
-            info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
-            this._Games.Add(id, info);
+                GameInfo info = new(id, type);
+                info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
+                this._Games.Add(id, info);
+            }
         }
 
         private void LoadCachedOwnedGames()
@@ -1084,7 +1129,10 @@ namespace SAM.Picker
 
         private void AddGames()
         {
-            this._Games.Clear();
+            lock (this._GamesLock)
+            {
+                this._Games.Clear();
+            }
             this.LoadCachedOwnedGames();
             this.RefreshGames();
             this._RefreshGamesButton.Enabled = false;
@@ -1213,7 +1261,10 @@ namespace SAM.Picker
             }
 
             this._AddGameTextBox.Text = "";
-            this._Games.Clear();
+            lock (this._GamesLock)
+            {
+                this._Games.Clear();
+            }
             this.AddGame(id, "normal");
             this._FilterGamesMenuItem.Checked = true;
             this.RefreshGames();
@@ -1237,11 +1288,20 @@ namespace SAM.Picker
                 return;
             }
 
-            var info = this._FilteredGames[e.ItemIndex];
-            if (info.ImageIndex <= 0)
+            lock (this._FilteredGamesLock)
             {
-                this.AddGameToLogoQueue(info);
-                this.DownloadNextLogo();
+                // Bounds check to prevent race condition
+                if (e.ItemIndex < 0 || e.ItemIndex >= this._FilteredGames.Count)
+                {
+                    return;
+                }
+
+                var info = this._FilteredGames[e.ItemIndex];
+                if (info.ImageIndex <= 0)
+                {
+                    this.AddGameToLogoQueue(info);
+                    this.DownloadNextLogo();
+                }
             }
         }
     }
