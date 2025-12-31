@@ -149,7 +149,7 @@ namespace SAM.API
             }
 
             var binPath = Path.Combine(path, "bin");
-            string library = Environment.Is64BitProcess ? "steamclient64.dll" : "steamclient.dll";
+            const string library = "steamclient64.dll"; // x64-only project
             string libraryPath = Path.Combine(path, library);
             if (File.Exists(libraryPath) == false)
             {
