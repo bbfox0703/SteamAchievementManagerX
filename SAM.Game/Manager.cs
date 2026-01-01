@@ -55,6 +55,10 @@ namespace SAM.Game
 
         private const int MaxIconBytes = 512 * 1024; // 512 KB
         private const int MaxIconDimension = 1024; // px
+        private const int HttpClientTimeoutSeconds = 30;
+        private const int MaxTimerTextLength = 6; // Maximum digits for timer input
+        private const int MouseMoveDistance = 15; // Pixels to move mouse
+        private const int MouseMoveDelayMs = 12; // Milliseconds between mouse movements
         private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly List<Stats.AchievementInfo> _iconQueue = new();
@@ -208,7 +212,7 @@ namespace SAM.Game
 
             this._HttpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(30),
+                Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds),
             };
             this.FormClosed += (_, _) =>
             {
@@ -906,13 +910,23 @@ namespace SAM.Game
                                         return;
                                     }
                                 }
-                                catch (ArgumentException)
+                                catch (ArgumentException ex)
                                 {
-                                    try { File.Delete(cachePath); } catch { }
+                                    DebugLogger.Log($"Invalid image data, deleting cache: {cachePath}", ex);
+                                    try { File.Delete(cachePath); }
+                                    catch (Exception deleteEx)
+                                    {
+                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
+                                    }
                                 }
-                                catch (OutOfMemoryException)
+                                catch (OutOfMemoryException ex)
                                 {
-                                    try { File.Delete(cachePath); } catch { }
+                                    DebugLogger.Log($"Out of memory loading image, deleting cache: {cachePath}", ex);
+                                    try { File.Delete(cachePath); }
+                                    catch (Exception deleteEx)
+                                    {
+                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
+                                    }
                                 }
                             }
                         }
@@ -1283,8 +1297,8 @@ namespace SAM.Game
         }
         private void _AddTimerTextBox_TextChanged(object sender, EventArgs e)
         {
-            if (_AddTimerTextBox.Text.Length > 6)
-                _AddTimerTextBox.Text = _AddTimerTextBox.Text.Substring(0, 6);
+            if (_AddTimerTextBox.Text.Length > MaxTimerTextLength)
+                _AddTimerTextBox.Text = _AddTimerTextBox.Text.Substring(0, MaxTimerTextLength);
 
             if (_AddTimerTextBox.Text != "-" && _AddTimerTextBox.Text != "" && !IsInteger(_AddTimerTextBox.Text))
             {
@@ -1422,14 +1436,13 @@ namespace SAM.Game
             GetCursorPos(out POINT currentPos);
             if (currentPos.X == _lastMousePos.X && currentPos.Y == _lastMousePos.Y)
             {
-                int moveDistance = 15;
-                int newX = _moveRight ? currentPos.X + moveDistance : currentPos.X - moveDistance;
-                for (int i = 0; i < moveDistance; i++)
+                int newX = _moveRight ? currentPos.X + MouseMoveDistance : currentPos.X - MouseMoveDistance;
+                for (int i = 0; i < MouseMoveDistance; i++)
                 {
                     int intermediateX = _moveRight ? currentPos.X + i : currentPos.X - i;
                     SetCursorPos(intermediateX, currentPos.Y);
                     mouse_event(MOUSEEVENTF_MOVE, (uint)(intermediateX - currentPos.X), 0, 0, UIntPtr.Zero);
-                    Thread.Sleep(12); // Wait ??ms between each pixel movement
+                    Thread.Sleep(MouseMoveDelayMs);
                 }
                 _moveRight = !_moveRight;
             }

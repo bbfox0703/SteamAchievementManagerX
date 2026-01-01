@@ -33,6 +33,12 @@
                     }
                 }
 
+                // Unsubscribe from events to prevent memory leaks
+                if (this._AppDataChangedCallback != null)
+                {
+                    this._AppDataChangedCallback.OnRun -= this.OnAppDataChanged;
+                }
+
                 if (components != null)
                 {
                     components.Dispose();
