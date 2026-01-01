@@ -461,31 +461,14 @@ namespace SAM.Picker
                 totalGamesCount = this._Games.Count;
             }
 
-            // Build filtered list from snapshot
-            var filteredList = new List<GameInfo>();
-            foreach (var info in gamesSnapshot)
-            {
-                if (nameSearch != null &&
-                    info.Name.IndexOf(nameSearch, StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    continue;
-                }
-
-                bool wanted = info.Type switch
-                {
-                    "normal" => wantNormals,
-                    "demo" => wantDemos,
-                    "mod" => wantMods,
-                    "junk" => wantJunk,
-                    _ => true,
-                };
-                if (wanted == false)
-                {
-                    continue;
-                }
-
-                filteredList.Add(info);
-            }
+            // Filter games using the service
+            var filteredList = Services.GameListFilter.FilterGames(
+                gamesSnapshot,
+                nameSearch,
+                wantNormals,
+                wantDemos,
+                wantMods,
+                wantJunk);
 
             // Update UI while preventing ListView paint events
             this._GameListView.BeginUpdate();
@@ -974,23 +957,7 @@ namespace SAM.Picker
                 return;
             }
 
-            string gameExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SAM.Game.exe");
-            if (File.Exists(gameExe) == false)
-            {
-                MessageBox.Show(
-                    this,
-                    "SAM.Game.exe is missing.",
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
-            }
-
-            try
-            {
-                Process.Start(gameExe, info.Id.ToString(CultureInfo.InvariantCulture));
-            }
-            catch (Win32Exception)
+            if (!Services.GameLauncher.LaunchGame(info.Id))
             {
                 MessageBox.Show(
                     this,
