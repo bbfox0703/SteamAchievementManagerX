@@ -56,6 +56,7 @@ namespace SAM.Picker
         private readonly object _GamesLock;
         private readonly object _FilteredGamesLock;
         private readonly Services.GameLogoDownloader _logoDownloader;
+        private readonly Presenters.GameListViewAdapter _gameListAdapter;
 
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
@@ -130,6 +131,7 @@ namespace SAM.Picker
             }
 
             this._logoDownloader = new Services.GameLogoDownloader(iconCacheDirectory, useIconCache);
+            this._gameListAdapter = new Presenters.GameListViewAdapter(this._FilteredGames, this._FilteredGamesLock);
 
             this.InitializeComponent();
             this.FormBorderStyle = FormBorderStyle.None;
@@ -498,79 +500,12 @@ namespace SAM.Picker
 
         private void OnGameListViewRetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            lock (this._FilteredGamesLock)
-            {
-                // Bounds check to prevent race condition
-                if (e.ItemIndex < 0 || e.ItemIndex >= this._FilteredGames.Count)
-                {
-                    e.Item = new ListViewItem("Loading...");
-                    return;
-                }
-
-                var info = this._FilteredGames[e.ItemIndex];
-                e.Item = info.Item = new()
-                {
-                    Text = info.Name,
-                    ImageIndex = info.ImageIndex,
-                };
-            }
+            this._gameListAdapter.OnRetrieveVirtualItem(sender, e);
         }
 
         private void OnGameListViewSearchForVirtualItem(object sender, SearchForVirtualItemEventArgs e)
         {
-            if (e.Direction != SearchDirectionHint.Down || e.IsTextSearch == false)
-            {
-                return;
-            }
-
-            lock (this._FilteredGamesLock)
-            {
-                var count = this._FilteredGames.Count;
-                if (count < 2)
-                {
-                    return;
-                }
-
-                var text = e.Text ?? string.Empty;
-                if (string.IsNullOrEmpty(text))
-                {
-                    return;
-                }
-
-                int startIndex = e.StartIndex;
-
-                Predicate<GameInfo> predicate;
-                /*if (e.IsPrefixSearch == true)*/
-                {
-                    predicate = gi => gi.Name != null && gi.Name.StartsWith(text, StringComparison.CurrentCultureIgnoreCase);
-                }
-                /*else
-                {
-                    predicate = gi => gi.Name != null && string.Compare(gi.Name, text, StringComparison.CurrentCultureIgnoreCase) == 0;
-                }*/
-
-                int index;
-                if (e.StartIndex >= count)
-                {
-                    // starting from the last item in the list
-                    index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
-                }
-                else if (startIndex <= 0)
-                {
-                    // starting from the first item in the list
-                    index = this._FilteredGames.FindIndex(0, count, predicate);
-                }
-                else
-                {
-                    index = this._FilteredGames.FindIndex(startIndex, count - startIndex, predicate);
-                    if (index < 0)
-                    {
-                        index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
-                    }
-                }
-
-                e.Index = index < 0 ? -1 : index;
-            }
+            this._gameListAdapter.OnSearchForVirtualItem(sender, e);
         }
 
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
