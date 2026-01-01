@@ -50,6 +50,7 @@ namespace SAM.Game
 
         private readonly string _IconCacheDirectory;
         private Services.AchievementIconManager _achievementIconManager = null!;
+        private Services.AchievementDataService _achievementDataService = null!;
 
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
@@ -317,6 +318,11 @@ namespace SAM.Game
             this._achievementDefinitions.AddRange(achievements);
             this._statDefinitions.AddRange(stats);
 
+            // Initialize achievement data service with loaded definitions
+            this._achievementDataService = new Services.AchievementDataService(
+                this._SteamClient,
+                this._achievementDefinitions);
+
             return true;
         }
 
@@ -415,66 +421,25 @@ namespace SAM.Game
 
             this._AchievementListView.Items.Clear();
             this._AchievementListView.BeginUpdate();
-            //this.Achievements.Clear();
 
             bool wantLocked = this._DisplayLockedOnlyButton.Checked == true;
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
             bool light = WinForms.WindowsThemeDetector.IsLightTheme();
 
-            foreach (var def in this._achievementDefinitions)
+            // Load achievements using the data service
+            var achievements = this._achievementDataService.LoadAchievements(
+                wantLocked,
+                wantUnlocked,
+                textSearch);
+
+            foreach (var info in achievements)
             {
-                if (string.IsNullOrEmpty(def.Id) == true)
-                {
-                    continue;
-                }
-
-                if (this._SteamClient.SteamUserStats.GetAchievementAndUnlockTime(
-                    def.Id,
-                    out bool isAchieved,
-                    out var unlockTime) == false)
-                {
-                    continue;
-                }
-
-                bool wanted = (wantLocked == false && wantUnlocked == false) || isAchieved switch
-                {
-                    true => wantUnlocked,
-                    false => wantLocked,
-                };
-                if (wanted == false)
-                {
-                    continue;
-                }
-
-                if (textSearch != null)
-                {
-                    if (def.Name.IndexOf(textSearch, StringComparison.OrdinalIgnoreCase) < 0 &&
-                        (string.IsNullOrEmpty(def.Description) || def.Description.IndexOf(textSearch, StringComparison.OrdinalIgnoreCase) < 0))
-                    {
-                        continue;
-                    }
-                }
-
-                Stats.AchievementInfo info = new()
-                {
-                    Id = def.Id,
-                    IsAchieved = isAchieved,
-                    UnlockTime = isAchieved == true && unlockTime > 0
-                        ? DateTimeOffset.FromUnixTimeSeconds(unlockTime).LocalDateTime
-                        : null,
-                    IconNormal = string.IsNullOrEmpty(def.IconNormal) ? null : def.IconNormal,
-                    IconLocked = string.IsNullOrEmpty(def.IconLocked) ? def.IconNormal : def.IconLocked,
-                    Permission = def.Permission,
-                    Name = def.Name,
-                    Description = def.Description,
-                };
-
                 ListViewItem item = new()
                 {
-                    Checked = isAchieved,
+                    Checked = info.IsAchieved,
                     Tag = info,
                     Text = info.Name,
-                    BackColor = (def.Permission & 3) == 0
+                    BackColor = (info.Permission & 3) == 0
                         ? this.BackColor
                         : (light
                             ? ControlPaint.Light(this.BackColor)
@@ -630,24 +595,20 @@ namespace SAM.Game
                 return 0;
             }
 
-            foreach (var info in achievements)
+            // Store achievements using the data service
+            int result = this._achievementDataService.StoreAchievements(achievements);
+
+            if (result == -1 && !silent)
             {
-                if (this._SteamClient.SteamUserStats.SetAchievement(info.Id, info.IsAchieved) == false)
-                {
-                    if (!silent)
-                    {
-                        MessageBox.Show(
-                            this,
-                            $"An error occurred while setting the state for {info.Id}, aborting store.",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-                    return -1;
-                }
+                MessageBox.Show(
+                    this,
+                    "An error occurred while storing achievements.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
 
-            return achievements.Count;
+            return result;
         }
 
         private int StoreStatistics(bool silent = false)
