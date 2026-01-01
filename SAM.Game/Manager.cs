@@ -97,11 +97,6 @@ namespace SAM.Game
         private const int TPM_RIGHTBUTTON = 0x0002;
         private const int TPM_RETURNCMD = 0x0100;
 
-        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-        private const int DWMSBT_MAINWINDOW = 2;
-        private const int DWMWCP_ROUND = 2;
 
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int X, int Y);
@@ -131,14 +126,6 @@ namespace SAM.Game
             public int Y;
         }
 
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
@@ -1514,7 +1501,7 @@ namespace SAM.Game
                 this.BeginInvoke(new MethodInvoker(() =>
                 {
                     this.UpdateColors();
-                    this.TryApplyMica();
+                    WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
                 }));
             }
         }
@@ -1522,14 +1509,14 @@ namespace SAM.Game
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            this.TryApplyMica();
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void WndProc(ref Message m)
@@ -1586,7 +1573,7 @@ namespace SAM.Game
             else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
             {
                 this.UpdateColors();
-                this.TryApplyMica();
+                WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             }
         }
 
@@ -1624,34 +1611,6 @@ namespace SAM.Game
             this.Close();
         }
 
-        private void TryApplyMica()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
-            {
-                return;
-            }
-
-            int backdrop = DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
-
-            int dark = WinForms.WindowsThemeDetector.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
-        }
-
-        private void ApplyRoundedCorners()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
-            {
-                int pref = DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
-            }
-            else
-            {
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
-                this.Region = Region.FromHrgn(rgn);
-                DeleteObject(rgn);
-            }
-        }
 
         private void UpdateColors()
         {
