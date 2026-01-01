@@ -331,85 +331,39 @@ namespace SAM.Game
 
             DebugLogger.Log($"Downloading icon from '{builder.Uri}'.");
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
-            using var response = await WinForms.HttpClientManager.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
+            var (data, contentType) = await WinForms.ImageDownloader.DownloadImageDataAsync(
+                builder.Uri,
+                WinForms.HttpClientManager.Client,
+                MaxIconBytes);
 
-            var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > MaxIconBytes)
-            {
-                throw new HttpRequestException("Response too large or missing length");
-            }
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+            if (!WinForms.ImageValidator.IsImageContentType(contentType))
             {
                 throw new InvalidDataException("Invalid content type");
             }
 
-            using var stream = await response.Content.ReadAsStreamAsync();
-            var data = ReadWithLimit(stream, MaxIconBytes);
-
-            using var imageStream = new MemoryStream(data, false);
-            try
+            if (!WinForms.ImageValidator.TryValidateAndLoadImage(data, MaxIconBytes, MaxIconDimension, out var image))
             {
-                using var image = Image.FromStream(
-                    imageStream,
-                    useEmbeddedColorManagement: false,
-                    validateImageData: true);
-                if (image.Width > MaxIconDimension || image.Height > MaxIconDimension)
-                {
-                    throw new InvalidDataException("Image dimensions too large");
-                }
+                return null;
+            }
 
-                Bitmap bitmap = new(image);
+            Bitmap bitmap = image as Bitmap ?? new Bitmap(image!);
 
-                if (this._UseIconCache == true)
+            if (this._UseIconCache == true)
+            {
+                var cachePath = this.GetAchievementCachePath(info);
+                if (cachePath != null)
                 {
-                    var cachePath = this.GetAchievementCachePath(info);
-                    if (cachePath != null)
+                    DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
+                    if (!WinForms.ImageDownloader.TrySaveToCache(cachePath, data))
                     {
-                        try
-                        {
-                            DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
-                            File.WriteAllBytes(cachePath, data);
-                        }
-                        catch (Exception)
-                        {
-                            this._UseIconCache = false;
-                        }
+                        this._UseIconCache = false;
                     }
                 }
+            }
 
-                return bitmap;
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-            catch (OutOfMemoryException)
-            {
-                return null;
-            }
+            return bitmap;
         }
 
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
-        }
 
         private static string TranslateError(int id) => id switch
         {
@@ -870,44 +824,11 @@ namespace SAM.Game
                     try
                     {
                         DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
-                        if (File.Exists(cachePath) == true)
+                        if (WinForms.ImageValidator.TryLoadImageFromCache(cachePath, MaxIconBytes, MaxIconDimension, out var cachedImage))
                         {
-                            var bytes = File.ReadAllBytes(cachePath);
-                            if (bytes.Length <= MaxIconBytes)
-                            {
-                                using var stream = new MemoryStream(bytes, false);
-                                try
-                                {
-                                    using var image = Image.FromStream(
-                                        stream,
-                                        useEmbeddedColorManagement: false,
-                                        validateImageData: true);
-                                    if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
-                                    {
-                                        this.AddAchievementIcon(info, image);
-                                        DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
-                                        return;
-                                    }
-                                }
-                                catch (ArgumentException ex)
-                                {
-                                    DebugLogger.Log($"Invalid image data, deleting cache: {cachePath}", ex);
-                                    try { File.Delete(cachePath); }
-                                    catch (Exception deleteEx)
-                                    {
-                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
-                                    }
-                                }
-                                catch (OutOfMemoryException ex)
-                                {
-                                    DebugLogger.Log($"Out of memory loading image, deleting cache: {cachePath}", ex);
-                                    try { File.Delete(cachePath); }
-                                    catch (Exception deleteEx)
-                                    {
-                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
-                                    }
-                                }
-                            }
+                            this.AddAchievementIcon(info, cachedImage);
+                            DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
+                            return;
                         }
                     }
                     catch (Exception)

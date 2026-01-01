@@ -357,28 +357,11 @@ namespace SAM.Picker
                 var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
                 using var stream = await response.Content.ReadAsStreamAsync();
-                var data = ReadWithLimit(stream, MaxLogoBytes);
+                var data = WinForms.ImageValidator.ReadStreamWithLimit(stream, MaxLogoBytes);
                 return (data, contentType);
             }
         }
 
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
-        }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
@@ -637,44 +620,11 @@ namespace SAM.Picker
                 cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
                 try
                 {
-                    if (File.Exists(cacheFile) == true)
+                    if (WinForms.ImageValidator.TryLoadImageFromCache(cacheFile, MaxLogoBytes, MaxLogoDimension, out var cachedImage))
                     {
-                        var bytes = File.ReadAllBytes(cacheFile);
-                        if (bytes.Length <= MaxLogoBytes)
-                        {
-                            using var stream = new MemoryStream(bytes, false);
-                            try
-                            {
-                                using var image = Image.FromStream(
-                                    stream,
-                                    useEmbeddedColorManagement: false,
-                                    validateImageData: true);
-                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
-                                {
-                                    Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                    e.Result = new LogoInfo(info.Id, bitmap);
-                                    return;
-                                }
-                            }
-                            catch (ArgumentException ex)
-                            {
-                                DebugLogger.Log($"Invalid image data, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                            catch (OutOfMemoryException ex)
-                            {
-                                DebugLogger.Log($"Out of memory loading image, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                        }
+                        Bitmap bitmap = cachedImage.ResizeToFit(this._LogoImageList.ImageSize);
+                        e.Result = new LogoInfo(info.Id, bitmap);
+                        return;
                     }
                 }
                 catch (Exception)
@@ -706,54 +656,32 @@ namespace SAM.Picker
                     var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
                         await this.DownloadDataAsync(nonNullUri).ConfigureAwait(false)
                     ).GetAwaiter().GetResult();
-                    if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+
+                    if (!WinForms.ImageValidator.IsImageContentType(contentType))
                     {
                         throw new InvalidDataException("Invalid content type");
                     }
 
-                    using (MemoryStream stream = new(data, false))
+                    if (WinForms.ImageValidator.TryValidateAndLoadImage(data, MaxLogoBytes, MaxLogoDimension, out var image))
                     {
-                        try
+                        Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
+                        e.Result = new LogoInfo(info.Id, bitmap);
+                        info.ImageUrl = url;
+
+                        if (this._UseIconCache == true && cacheFile != null)
                         {
-                            using (var image = Image.FromStream(
-                                       stream,
-                                       useEmbeddedColorManagement: false,
-                                       validateImageData: true))
+                            var cacheData = bitmap.ToPngBytes();
+                            if (!WinForms.ImageDownloader.TrySaveToCache(cacheFile, cacheData))
                             {
-                                if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
-                                {
-                                    throw new InvalidDataException("Image dimensions too large");
-                                }
-
-                                Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                e.Result = new LogoInfo(info.Id, bitmap);
-                                info.ImageUrl = url;
-
-                                if (this._UseIconCache == true && cacheFile != null)
-                                {
-                                    try
-                                    {
-                                        var cacheData = bitmap.ToPngBytes();
-                                        File.WriteAllBytes(cacheFile, cacheData);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        this._UseIconCache = false;
-                                    }
-                                }
-                                return;
+                                this._UseIconCache = false;
                             }
                         }
-                        catch (ArgumentException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
-                        catch (OutOfMemoryException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
+                        return;
+                    }
+                    else
+                    {
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
                     }
                 }
                 catch (Exception ex)
