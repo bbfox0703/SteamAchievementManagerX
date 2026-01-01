@@ -308,7 +308,7 @@ namespace SAM.Picker
             int backdrop = DWMSBT_MAINWINDOW;
             DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
 
-            int dark = this.IsLightTheme() ? 0 : 1;
+            int dark = WinForms.WindowsThemeDetector.IsLightTheme() ? 0 : 1;
             DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
         }
 
@@ -327,25 +327,9 @@ namespace SAM.Picker
             }
         }
 
-        private bool IsLightTheme()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                if (key?.GetValue("AppsUseLightTheme") is int i)
-                {
-                    return i != 0;
-                }
-            }
-            catch
-            {
-            }
-            return true;
-        }
-
         private void UpdateColors()
         {
-            bool light = this.IsLightTheme();
+            bool light = WinForms.WindowsThemeDetector.IsLightTheme();
             if (light)
             {
                 this._BorderColor = Color.FromArgb(200, 200, 200);
