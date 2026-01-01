@@ -49,16 +49,11 @@ namespace SAM.Game
         private readonly API.Client _SteamClient;
 
         private readonly string _IconCacheDirectory;
-        private bool _UseIconCache;
+        private Services.AchievementIconManager _achievementIconManager = null!;
 
-        private const int MaxIconBytes = 512 * 1024; // 512 KB
-        private const int MaxIconDimension = 1024; // px
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
         private const int MouseMoveDelayMs = 12; // Milliseconds between mouse movements
-        private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        private readonly List<Stats.AchievementInfo> _iconQueue = new();
         private readonly List<Stats.StatDefinition> _statDefinitions = new();
 
         private readonly List<Stats.AchievementDefinition> _achievementDefinitions = new();
@@ -204,15 +199,21 @@ namespace SAM.Game
                 AppDomain.CurrentDomain.BaseDirectory,
                 "appcache",
                 gameId.ToString(CultureInfo.InvariantCulture));
+
+            bool useIconCache = true;
             try
             {
                 Directory.CreateDirectory(this._IconCacheDirectory);
-                this._UseIconCache = true;
             }
             catch (Exception)
             {
-                this._UseIconCache = false;
+                useIconCache = false;
             }
+
+            this._achievementIconManager = new Services.AchievementIconManager(
+                gameId,
+                this._IconCacheDirectory,
+                useIconCache);
 
             string name = this._SteamClient.SteamApps001.GetAppData((uint)this._GameId, "name");
             if (name != null)
@@ -235,36 +236,6 @@ namespace SAM.Game
             this.UpdateColors();
         }
 
-        private string? GetAchievementCachePath(Stats.AchievementInfo info)
-        {
-            if (this._UseIconCache == false)
-            {
-                return null;
-            }
-
-            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
-            if (string.IsNullOrEmpty(icon))
-            {
-                return null;
-            }
-
-            var id = info.Id;
-            var invalid = Path.GetInvalidFileNameChars();
-            if (id.IndexOfAny(invalid) >= 0 ||
-                id.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
-                id.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
-            {
-                var originalId = id;
-                id = Uri.EscapeDataString(id);
-                DebugLogger.Log($"Renaming icon id '{originalId}' to '{id}' for cache file name.");
-            }
-
-            var fileName = id + "_" + (info.IsAchieved == true ? "achieved" : "locked") + ".png";
-            var path = Path.Combine(this._IconCacheDirectory, fileName);
-            DebugLogger.Log($"Cache path for icon '{info.Id}' resolved to '{path}'.");
-            return path;
-        }
-
         private void AddAchievementIcon(Stats.AchievementInfo info, Image? icon)
         {
             if (icon == null)
@@ -282,22 +253,26 @@ namespace SAM.Game
 
         private async void DownloadNextIcon()
         {
-            if (this._iconQueue.Count == 0)
+            if (this._achievementIconManager.QueueCount == 0)
             {
                 this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._iconQueue.Count} icons...";
+            this._DownloadStatusLabel.Text = $"Downloading {this._achievementIconManager.QueueCount} icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            var info = this._iconQueue[0];
-            this._iconQueue.RemoveAt(0);
+            var info = this._achievementIconManager.DequeueIcon();
+            if (info == null)
+            {
+                this._DownloadStatusLabel.Visible = false;
+                return;
+            }
 
             Bitmap? bitmap = null;
             try
             {
-                bitmap = await this.DownloadIconAsync(info);
+                bitmap = await this._achievementIconManager.DownloadIconAsync(info);
             }
             catch (Exception ex)
             {
@@ -309,61 +284,6 @@ namespace SAM.Game
 
             this.DownloadNextIcon();
         }
-
-        private async System.Threading.Tasks.Task<Bitmap?> DownloadIconAsync(Stats.AchievementInfo info)
-        {
-            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
-            if (string.IsNullOrEmpty(icon))
-            {
-                return null;
-            }
-
-            var fileName = Path.GetFileName(icon);
-            if (string.IsNullOrEmpty(fileName) || fileName != icon || IconNameRegex.IsMatch(fileName) == false)
-            {
-                return null;
-            }
-
-            var builder = new UriBuilder("https", "cdn.steamstatic.com")
-            {
-                Path = $"/steamcommunity/public/images/apps/{this._GameId}/{Uri.EscapeDataString(fileName)}"
-            };
-
-            DebugLogger.Log($"Downloading icon from '{builder.Uri}'.");
-
-            var (data, contentType) = await WinForms.ImageDownloader.DownloadImageDataAsync(
-                builder.Uri,
-                WinForms.HttpClientManager.Client,
-                MaxIconBytes);
-
-            if (!WinForms.ImageValidator.IsImageContentType(contentType))
-            {
-                throw new InvalidDataException("Invalid content type");
-            }
-
-            if (!WinForms.ImageValidator.TryValidateAndLoadImage(data, MaxIconBytes, MaxIconDimension, out var image))
-            {
-                return null;
-            }
-
-            Bitmap bitmap = image as Bitmap ?? new Bitmap(image!);
-
-            if (this._UseIconCache == true)
-            {
-                var cachePath = this.GetAchievementCachePath(info);
-                if (cachePath != null)
-                {
-                    DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
-                    if (!WinForms.ImageDownloader.TrySaveToCache(cachePath, data))
-                    {
-                        this._UseIconCache = false;
-                    }
-                }
-            }
-
-            return bitmap;
-        }
-
 
         private static string TranslateError(int id) => id switch
         {
@@ -671,29 +591,13 @@ namespace SAM.Game
                 return;
             }
 
-            if (this._UseIconCache == true)
+            if (this._achievementIconManager.TryLoadFromCache(info, out var cachedImage))
             {
-                var cachePath = this.GetAchievementCachePath(info);
-                if (cachePath != null)
-                {
-                    try
-                    {
-                        DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
-                        if (WinForms.ImageValidator.TryLoadImageFromCache(cachePath, MaxIconBytes, MaxIconDimension, out var cachedImage))
-                        {
-                            this.AddAchievementIcon(info, cachedImage);
-                            DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
-                            return;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        this._UseIconCache = false;
-                    }
-                }
+                this.AddAchievementIcon(info, cachedImage);
+                return;
             }
 
-            this._iconQueue.Add(info);
+            this._achievementIconManager.QueueIcon(info);
 
             if (startDownload == true)
             {
