@@ -49,7 +49,6 @@ namespace SAM.Picker
     internal partial class GamePicker : Form
     {
         private readonly API.Client _SteamClient;
-        private readonly HttpClient _HttpClient;
 
         private readonly Dictionary<uint, GameInfo> _Games;
         private readonly List<GameInfo> _FilteredGames;
@@ -89,20 +88,6 @@ namespace SAM.Picker
         private const int TPM_RIGHTBUTTON = 0x0002;
         private const int TPM_RETURNCMD = 0x0100;
 
-        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-        private const int DWMSBT_MAINWINDOW = 2;
-        private const int DWMWCP_ROUND = 2;
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
@@ -168,13 +153,8 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
-            this._HttpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds),
-            };
             this.FormClosed += (_, _) =>
             {
-                this._HttpClient.Dispose();
                 SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
             };
 
@@ -191,14 +171,14 @@ namespace SAM.Picker
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            this.TryApplyMica();
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
@@ -208,7 +188,7 @@ namespace SAM.Picker
                 this.BeginInvoke(new MethodInvoker(() =>
                 {
                     this.UpdateColors();
-                    this.TryApplyMica();
+                    WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
                 }));
             }
         }
@@ -267,7 +247,7 @@ namespace SAM.Picker
             else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
             {
                 this.UpdateColors();
-                this.TryApplyMica();
+                WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             }
         }
 
@@ -304,54 +284,11 @@ namespace SAM.Picker
             this.Close();
         }
 
-        private void TryApplyMica()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
-            {
-                return;
-            }
 
-            int backdrop = DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
-
-            int dark = this.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
-        }
-
-        private void ApplyRoundedCorners()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
-            {
-                int pref = DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
-            }
-            else
-            {
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
-                this.Region = Region.FromHrgn(rgn);
-                DeleteObject(rgn);
-            }
-        }
-
-        private bool IsLightTheme()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                if (key?.GetValue("AppsUseLightTheme") is int i)
-                {
-                    return i != 0;
-                }
-            }
-            catch
-            {
-            }
-            return true;
-        }
 
         private void UpdateColors()
         {
-            bool light = this.IsLightTheme();
+            bool light = WinForms.WindowsThemeDetector.IsLightTheme();
             if (light)
             {
                 this._BorderColor = Color.FromArgb(200, 200, 200);
@@ -390,18 +327,17 @@ namespace SAM.Picker
 
         private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
         private const int MaxLogoDimension = 1024; // px
-        private const int HttpClientTimeoutSeconds = 30;
 
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            HttpResponseMessage response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
+            HttpResponseMessage response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound &&
                 uri.Host.Equals("shared.cloudflare.steamstatic.com", StringComparison.OrdinalIgnoreCase))
             {
                 response.Dispose();
                 var fallbackUri = new UriBuilder(uri) { Host = "shared.steamstatic.com" }.Uri;
-                response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
+                response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
             }
 
             using (response)
@@ -421,28 +357,11 @@ namespace SAM.Picker
                 var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
                 using var stream = await response.Content.ReadAsStreamAsync();
-                var data = ReadWithLimit(stream, MaxLogoBytes);
+                var data = WinForms.ImageValidator.ReadStreamWithLimit(stream, MaxLogoBytes);
                 return (data, contentType);
             }
         }
 
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
-        }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
@@ -454,7 +373,7 @@ namespace SAM.Picker
             bool usedLocal;
             byte[] bytes = GameList.Load(
                 AppDomain.CurrentDomain.BaseDirectory,
-                this._HttpClient,
+                WinForms.HttpClientManager.Client,
                 out usedLocal);
 
             //Silent load from local file if network fails
@@ -701,44 +620,11 @@ namespace SAM.Picker
                 cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
                 try
                 {
-                    if (File.Exists(cacheFile) == true)
+                    if (WinForms.ImageValidator.TryLoadImageFromCache(cacheFile, MaxLogoBytes, MaxLogoDimension, out var cachedImage))
                     {
-                        var bytes = File.ReadAllBytes(cacheFile);
-                        if (bytes.Length <= MaxLogoBytes)
-                        {
-                            using var stream = new MemoryStream(bytes, false);
-                            try
-                            {
-                                using var image = Image.FromStream(
-                                    stream,
-                                    useEmbeddedColorManagement: false,
-                                    validateImageData: true);
-                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
-                                {
-                                    Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                    e.Result = new LogoInfo(info.Id, bitmap);
-                                    return;
-                                }
-                            }
-                            catch (ArgumentException ex)
-                            {
-                                DebugLogger.Log($"Invalid image data, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                            catch (OutOfMemoryException ex)
-                            {
-                                DebugLogger.Log($"Out of memory loading image, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                        }
+                        Bitmap bitmap = cachedImage.ResizeToFit(this._LogoImageList.ImageSize);
+                        e.Result = new LogoInfo(info.Id, bitmap);
+                        return;
                     }
                 }
                 catch (Exception)
@@ -770,54 +656,32 @@ namespace SAM.Picker
                     var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
                         await this.DownloadDataAsync(nonNullUri).ConfigureAwait(false)
                     ).GetAwaiter().GetResult();
-                    if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+
+                    if (!WinForms.ImageValidator.IsImageContentType(contentType))
                     {
                         throw new InvalidDataException("Invalid content type");
                     }
 
-                    using (MemoryStream stream = new(data, false))
+                    if (WinForms.ImageValidator.TryValidateAndLoadImage(data, MaxLogoBytes, MaxLogoDimension, out var image))
                     {
-                        try
+                        Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
+                        e.Result = new LogoInfo(info.Id, bitmap);
+                        info.ImageUrl = url;
+
+                        if (this._UseIconCache == true && cacheFile != null)
                         {
-                            using (var image = Image.FromStream(
-                                       stream,
-                                       useEmbeddedColorManagement: false,
-                                       validateImageData: true))
+                            var cacheData = bitmap.ToPngBytes();
+                            if (!WinForms.ImageDownloader.TrySaveToCache(cacheFile, cacheData))
                             {
-                                if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
-                                {
-                                    throw new InvalidDataException("Image dimensions too large");
-                                }
-
-                                Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                e.Result = new LogoInfo(info.Id, bitmap);
-                                info.ImageUrl = url;
-
-                                if (this._UseIconCache == true && cacheFile != null)
-                                {
-                                    try
-                                    {
-                                        var cacheData = bitmap.ToPngBytes();
-                                        File.WriteAllBytes(cacheFile, cacheData);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        this._UseIconCache = false;
-                                    }
-                                }
-                                return;
+                                this._UseIconCache = false;
                             }
                         }
-                        catch (ArgumentException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
-                        catch (OutOfMemoryException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
+                        return;
+                    }
+                    else
+                    {
+                        e.Result = new LogoInfo(info.Id, null);
+                        return;
                     }
                 }
                 catch (Exception ex)
