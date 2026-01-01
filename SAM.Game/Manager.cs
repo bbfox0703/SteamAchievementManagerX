@@ -371,55 +371,8 @@ namespace SAM.Game
             _ => _($"{id}"),
         };
 
-        private static string GetLocalizedString(KeyValue kv, string language, string defaultValue)
-        {
-            var name = kv[language].AsString("");
-            if (string.IsNullOrEmpty(name) == false)
-            {
-                return name;
-            }
-
-            if (language != "english")
-            {
-                name = kv["english"].AsString("");
-                if (string.IsNullOrEmpty(name) == false)
-                {
-                    return name;
-                }
-            }
-
-            name = kv.AsString("");
-            if (string.IsNullOrEmpty(name) == false)
-            {
-                return name;
-            }
-
-            return defaultValue;
-        }
-
         private bool LoadUserGameStatsSchema()
         {
-            string path;
-            try
-            {
-                string fileName = _($"UserGameStatsSchema_{this._GameId}.bin");
-                path = API.Steam.GetInstallPath();
-                path = Path.Combine(path, "appcache", "stats", fileName);
-                if (File.Exists(path) == false)
-                {
-                    return false;
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
-            var kv = KeyValue.LoadAsBinary(path);
-            if (kv == null)
-            {
-                return false;
-            }
             var currentLanguage = "";
             if (_LanguageComboBox.Text.Length == 0)
             {
@@ -431,116 +384,18 @@ namespace SAM.Game
                 currentLanguage = _LanguageComboBox.Text;
             }
 
+            var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
+
             this._achievementDefinitions.Clear();
             this._statDefinitions.Clear();
 
-            var stats = kv[this._GameId.ToString(CultureInfo.InvariantCulture)]["stats"];
-            if (stats.Valid == false || stats.Children == null)
+            if (!schemaManager.LoadSchema(out var achievements, out var stats))
             {
                 return false;
             }
 
-            foreach (var stat in stats.Children)
-            {
-                if (stat.Valid == false)
-                {
-                    continue;
-                }
-
-                var rawType = stat["type_int"].Valid
-                                  ? stat["type_int"].AsInteger(0)
-                                  : stat["type"].AsInteger(0);
-                var type = (APITypes.UserStatType)rawType;
-                switch (type)
-                {
-                    case APITypes.UserStatType.Invalid:
-                    {
-                        break;
-                    }
-
-                    case APITypes.UserStatType.Integer:
-                    {
-                        var id = stat["name"].AsString("");
-                        string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-                        this._statDefinitions.Add(new Stats.IntegerStatDefinition()
-                        {
-                            Id = stat["name"].AsString(""),
-                            DisplayName = name,
-                            MinValue = stat["min"].AsInteger(int.MinValue),
-                            MaxValue = stat["max"].AsInteger(int.MaxValue),
-                            MaxChange = stat["maxchange"].AsInteger(0),
-                            IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                            SetByTrustedGameServer = stat["bSetByTrustedGS"].AsBoolean(false),
-                            DefaultValue = stat["default"].AsInteger(0),
-                            Permission = stat["permission"].AsInteger(0),
-                        });
-                        break;
-                    }
-
-                    case APITypes.UserStatType.Float:
-                    case APITypes.UserStatType.AverageRate:
-                    {
-                        var id = stat["name"].AsString("");
-                        string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-                        this._statDefinitions.Add(new Stats.FloatStatDefinition()
-                        {
-                            Id = stat["name"].AsString(""),
-                            DisplayName = name,
-                            MinValue = stat["min"].AsFloat(float.MinValue),
-                            MaxValue = stat["max"].AsFloat(float.MaxValue),
-                            MaxChange = stat["maxchange"].AsFloat(0.0f),
-                            IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                            DefaultValue = stat["default"].AsFloat(0.0f),
-                            Permission = stat["permission"].AsInteger(0),
-                        });
-                        break;
-                    }
-
-                    case APITypes.UserStatType.Achievements:
-                    case APITypes.UserStatType.GroupAchievements:
-                    {
-                        if (stat.Children != null)
-                        {
-                            foreach (var bits in stat.Children.Where(
-                                b => string.Compare(b.Name, "bits", StringComparison.InvariantCultureIgnoreCase) == 0))
-                            {
-                                if (bits.Valid == false ||
-                                    bits.Children == null)
-                                {
-                                    continue;
-                                }
-
-                                foreach (var bit in bits.Children)
-                                {
-                                    string id = bit["name"].AsString("");
-                                    string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
-                                    string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
-
-                                    this._achievementDefinitions.Add(new()
-                                    {
-                                        Id = id,
-                                        Name = name,
-                                        Description = desc,
-                                        IconNormal = bit["display"]["icon"].AsString(""),
-                                        IconLocked = bit["display"]["icon_gray"].AsString(""),
-                                        IsHidden = bit["display"]["hidden"].AsBoolean(false),
-                                        Permission = bit["permission"].AsInteger(0),
-                                    });
-                                }
-                            }
-                        }
-
-                        break;
-                    }
-
-                    default:
-                    {
-                        throw new InvalidOperationException("invalid stat type");
-                    }
-                }
-            }
+            this._achievementDefinitions.AddRange(achievements);
+            this._statDefinitions.AddRange(stats);
 
             return true;
         }
