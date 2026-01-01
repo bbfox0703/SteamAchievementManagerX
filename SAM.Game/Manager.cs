@@ -425,12 +425,8 @@ namespace SAM.Game
 
             this._IsUpdatingAchievementList = true;
 
-            this._AchievementListView.Items.Clear();
-            this._AchievementListView.BeginUpdate();
-
             bool wantLocked = this._DisplayLockedOnlyButton.Checked == true;
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
-            bool light = WinForms.WindowsThemeDetector.IsLightTheme();
 
             // Load achievements using the data service
             var achievements = this._achievementDataService.LoadAchievements(
@@ -438,61 +434,17 @@ namespace SAM.Game
                 wantUnlocked,
                 textSearch);
 
-            foreach (var info in achievements)
-            {
-                ListViewItem item = new()
-                {
-                    Checked = info.IsAchieved,
-                    Tag = info,
-                    Text = info.Name,
-                    BackColor = (info.Permission & 3) == 0
-                        ? this.BackColor
-                        : (light
-                            ? ControlPaint.Light(this.BackColor)
-                            : ControlPaint.Dark(this.BackColor)),
-                    ForeColor = this.ForeColor,
-                };
+            // Populate ListView using the presenter
+            Presenters.AchievementListPresenter.PopulateListView(
+                this._AchievementListView,
+                achievements,
+                this.BackColor,
+                this.ForeColor,
+                this.sortColumn,
+                this.sortOrder,
+                (info) => this.QueueAchievementIcon(info, false));
 
-                info.Item = item;
-
-                if (item.Text.StartsWith("#", StringComparison.InvariantCulture) == true)
-                {
-                    item.Text = info.Id;
-                    item.SubItems.Add("");
-                }
-                else
-                {
-                    item.SubItems.Add(info.Description);
-                }
-
-                item.SubItems.Add(info.UnlockTime.HasValue == true
-                    ? info.UnlockTime.Value.ToString()
-                    : "");
-
-                //----------------
-                item.SubItems.Add(info.Id);
-                item.SubItems.Add("-1");
-                //----------------
-
-                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
-                {
-                    subItem.BackColor = item.BackColor;
-                    subItem.ForeColor = item.ForeColor;
-                }
-
-                info.ImageIndex = 0;
-
-                // Queue the icon for download if it's not already available
-                this.QueueAchievementIcon(info, false);
-                this._AchievementListView.Items.Add(item);
-            }
-
-            // Sort using the current column/order before displaying
-            this._AchievementListView.ListViewItemSorter = new ListViewItemComparer(sortColumn, sortOrder);
-            this._AchievementListView.Sort();
-            this._AchievementListView.EndUpdate();
             this._IsUpdatingAchievementList = false;
-
             this.DownloadNextIcon();
         }
 
@@ -1065,7 +1017,7 @@ namespace SAM.Game
                         : SortOrder.Ascending;
                 }
 
-                _AchievementListView.ListViewItemSorter = new ListViewItemComparer(e.Column, sortOrder);
+                _AchievementListView.ListViewItemSorter = new Presenters.AchievementListPresenter.ListViewItemComparer(e.Column, sortOrder);
                 _AchievementListView.Sort();
             }
             finally
@@ -1234,43 +1186,6 @@ namespace SAM.Game
             }
 
             base.Dispose(disposing);
-        }
-        class ListViewItemComparer : System.Collections.IComparer
-        {
-            private readonly int col;
-            private readonly SortOrder order;
-
-            public ListViewItemComparer(int column, SortOrder order)
-            {
-                col = column;
-                this.order = order;
-            }
-
-            public int Compare(object? x, object? y)
-            {
-                if (x is not ListViewItem itemX || y is not ListViewItem itemY)
-                {
-                    return 0;
-                }
-
-                var s1 = itemX.SubItems[col].Text;
-                var s2 = itemY.SubItems[col].Text;
-
-                int result;
-
-                // Try to parse as DateTime for date comparison
-                if (DateTime.TryParse(s1, out DateTime d1) && DateTime.TryParse(s2, out DateTime d2))
-                {
-                    result = DateTime.Compare(d1, d2);
-                }
-                else
-                {
-                    // Default to string comparison
-                    result = String.Compare(s1, s2);
-                }
-
-                return (order == SortOrder.Ascending) ? result : -result;
-            }
         }
     }
 }
