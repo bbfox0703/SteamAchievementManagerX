@@ -52,6 +52,7 @@ namespace SAM.Game
         private Services.AchievementIconManager _achievementIconManager = null!;
         private Services.AchievementDataService _achievementDataService = null!;
         private Services.StatisticsDataService _statisticsDataService = null!;
+        private readonly Services.CountdownTimerManager _countdownTimerManager = new();
 
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
@@ -66,7 +67,6 @@ namespace SAM.Game
 
         //private API.Callback<APITypes.UserStatsStored> UserStatsStoredCallback;
         // *****************************************************************
-        private Dictionary<string, int> _achievementCounters = new();
 
         private bool _moveRight = true;
         private POINT _lastMousePos;
@@ -379,12 +379,13 @@ namespace SAM.Game
                 return;
             }
 
-            // Synchronize ListView with _achievementCounters
+            // Synchronize ListView with countdown timers
             foreach (ListViewItem item in _AchievementListView.Items)
             {
                 string key = item.SubItems[3].Text; // 3rd column is Key
 
-                if (_achievementCounters.TryGetValue(key, out int counter))
+                int counter = this._countdownTimerManager.GetTimer(key);
+                if (counter >= 0)
                 {
                     item.SubItems[4].Text = counter.ToString(); // Update the Counter column
                 }
@@ -919,7 +920,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = timerValue.ToString(); // Fifth column (Display Index 4)
 
                 string key = item.SubItems[3].Text;
-                _achievementCounters[key] = timerValue; // Store value for refresh
+                this._countdownTimerManager.SetTimer(key, timerValue);
             }
 
             //MessageBox.Show("Selected rows have been successfully updated!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -940,30 +941,27 @@ namespace SAM.Game
 
         private void UpdateAchievementItem(ListViewItem item, ref bool shouldTriggerStore)
         {
-            // Get the Key (3rd column) and Counter (4th column)
-            string key = item.SubItems[3].Text; // 3rd column is Key
+            // Get the Key (3rd column)
+            string key = item.SubItems[3].Text;
 
-            string valueText = item.SubItems[4].Text; // 4th column is Counter
+            // Decrement timer using the service
+            bool timerReachedZero = this._countdownTimerManager.DecrementTimer(key, out int newValue);
 
-            if (int.TryParse(valueText, out int counter) && counter > 0)
+            // Update the Counter column in ListView
+            if (newValue >= 0)
             {
-                counter -= 1;
+                item.SubItems[4].Text = newValue.ToString();
+            }
+            else
+            {
+                item.SubItems[4].Text = "-1000";
+            }
 
-                // Update the Counter column in ListView
-                item.SubItems[4].Text = counter.ToString();
-
-                // Update the Dictionary
-                _achievementCounters[key] = counter;
-
-                // If the counter becomes 0, check the row and set the flag
-                if (counter == 0)
-                {
-                    item.Checked = true; // Check the row
-                    shouldTriggerStore = true; // Set the flag to trigger the store action
-
-                    item.SubItems[4].Text = "-1000";
-                    _achievementCounters[key] = -1; // Update the dictionary as well
-                }
+            // If the timer reached zero, check the row and trigger store
+            if (timerReachedZero)
+            {
+                item.Checked = true;
+                shouldTriggerStore = true;
             }
         }
 
