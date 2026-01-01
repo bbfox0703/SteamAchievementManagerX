@@ -51,6 +51,7 @@ namespace SAM.Game
         private readonly string _IconCacheDirectory;
         private Services.AchievementIconManager _achievementIconManager = null!;
         private Services.AchievementDataService _achievementDataService = null!;
+        private Services.StatisticsDataService _statisticsDataService = null!;
 
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
@@ -318,10 +319,14 @@ namespace SAM.Game
             this._achievementDefinitions.AddRange(achievements);
             this._statDefinitions.AddRange(stats);
 
-            // Initialize achievement data service with loaded definitions
+            // Initialize data services with loaded definitions
             this._achievementDataService = new Services.AchievementDataService(
                 this._SteamClient,
                 this._achievementDefinitions);
+
+            this._statisticsDataService = new Services.StatisticsDataService(
+                this._SteamClient,
+                this._statDefinitions);
 
             return true;
         }
@@ -493,45 +498,13 @@ namespace SAM.Game
         private void GetStatistics()
         {
             this._statistics.Clear();
-            foreach (var stat in this._statDefinitions)
-            {
-                if (string.IsNullOrEmpty(stat.Id) == true)
-                {
-                    continue;
-                }
 
-                if (stat is Stats.IntegerStatDefinition intStat)
-                {
-                    if (this._SteamClient.SteamUserStats.GetStatValue(intStat.Id, out int value) == false)
-                    {
-                        continue;
-                    }
-                    this._statistics.Add(new Stats.IntStatInfo()
-                    {
-                        Id = intStat.Id,
-                        DisplayName = intStat.DisplayName,
-                        IntValue = value,
-                        OriginalValue = value,
-                        IsIncrementOnly = intStat.IncrementOnly,
-                        Permission = intStat.Permission,
-                    });
-                }
-                else if (stat is Stats.FloatStatDefinition floatStat)
-                {
-                    if (this._SteamClient.SteamUserStats.GetStatValue(floatStat.Id, out float value) == false)
-                    {
-                        continue;
-                    }
-                    this._statistics.Add(new Stats.FloatStatInfo()
-                    {
-                        Id = floatStat.Id,
-                        DisplayName = floatStat.DisplayName,
-                        FloatValue = value,
-                        OriginalValue = value,
-                        IsIncrementOnly = floatStat.IncrementOnly,
-                        Permission = floatStat.Permission,
-                    });
-                }
+            // Load statistics using the data service
+            var statistics = this._statisticsDataService.LoadStatistics();
+
+            foreach (var stat in statistics)
+            {
+                this._statistics.Add(stat);
             }
         }
 
@@ -624,51 +597,20 @@ namespace SAM.Game
                 return 0;
             }
 
-            foreach (var stat in statistics)
+            // Store statistics using the data service
+            int result = this._statisticsDataService.StoreStatistics(statistics);
+
+            if (result == -1 && !silent)
             {
-                if (stat is Stats.IntStatInfo intStat)
-                {
-                    if (this._SteamClient.SteamUserStats.SetStatValue(
-                        intStat.Id,
-                        intStat.IntValue) == false)
-                    {
-                        if (!silent)
-                        {
-                            MessageBox.Show(
-                                this,
-                                $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                                "Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-                        }
-                        return -1;
-                    }
-                }
-                else if (stat is Stats.FloatStatInfo floatStat)
-                {
-                    if (this._SteamClient.SteamUserStats.SetStatValue(
-                        floatStat.Id,
-                        floatStat.FloatValue) == false)
-                    {
-                        if (!silent)
-                        {
-                            MessageBox.Show(
-                                this,
-                                $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                                "Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-                        }
-                        return -1;
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("unsupported stat type");
-                }
+                MessageBox.Show(
+                    this,
+                    "An error occurred while storing statistics.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
 
-            return statistics.Count;
+            return result;
         }
 
         private void DisableInput()
