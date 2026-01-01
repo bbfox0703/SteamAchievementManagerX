@@ -16,6 +16,51 @@ namespace SAM.WinForms
         private static readonly ConditionalWeakTable<TabControl, ColorInfo> _tabControlColors = new();
         private static readonly ConditionalWeakTable<ListView, ColorInfo> _listViewColors = new();
 
+        /// <summary>
+        /// Custom color table for dark/light mode ToolStrip rendering.
+        /// </summary>
+        private sealed class DarkModeColorTable : ProfessionalColorTable
+        {
+            private readonly bool _isDark;
+            private readonly Color _backColor;
+            private readonly Color _foreColor;
+
+            public DarkModeColorTable(bool isDark, Color backColor, Color foreColor)
+            {
+                _isDark = isDark;
+                _backColor = backColor;
+                _foreColor = foreColor;
+            }
+
+            public override Color ToolStripDropDownBackground => _backColor;
+            public override Color ImageMarginGradientBegin => _backColor;
+            public override Color ImageMarginGradientMiddle => _backColor;
+            public override Color ImageMarginGradientEnd => _backColor;
+            public override Color MenuBorder => _foreColor;
+            public override Color MenuItemBorder => _foreColor;
+            public override Color MenuItemSelected => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color MenuStripGradientBegin => _backColor;
+            public override Color MenuStripGradientEnd => _backColor;
+            public override Color MenuItemSelectedGradientBegin => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color MenuItemSelectedGradientEnd => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color MenuItemPressedGradientBegin => _backColor;
+            public override Color MenuItemPressedGradientEnd => _backColor;
+            public override Color ToolStripBorder => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color ToolStripGradientBegin => _backColor;
+            public override Color ToolStripGradientMiddle => _backColor;
+            public override Color ToolStripGradientEnd => _backColor;
+            public override Color ToolStripContentPanelGradientBegin => _backColor;
+            public override Color ToolStripContentPanelGradientEnd => _backColor;
+            public override Color ButtonSelectedBorder => _foreColor;
+            public override Color ButtonSelectedGradientBegin => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color ButtonSelectedGradientMiddle => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color ButtonSelectedGradientEnd => _isDark ? ControlPaint.Light(_backColor, 0.2f) : ControlPaint.Dark(_backColor, 0.1f);
+            public override Color ButtonPressedBorder => _foreColor;
+            public override Color ButtonPressedGradientBegin => _isDark ? ControlPaint.Light(_backColor, 0.3f) : ControlPaint.Dark(_backColor, 0.2f);
+            public override Color ButtonPressedGradientMiddle => _isDark ? ControlPaint.Light(_backColor, 0.3f) : ControlPaint.Dark(_backColor, 0.2f);
+            public override Color ButtonPressedGradientEnd => _isDark ? ControlPaint.Light(_backColor, 0.3f) : ControlPaint.Dark(_backColor, 0.2f);
+        }
+
         private sealed class ColorInfo
         {
             public Color Back { get; set; }
@@ -38,6 +83,11 @@ namespace SAM.WinForms
             RegisterHandler(typeof(ToolStrip), (o, back, fore) =>
             {
                 var strip = (ToolStrip)o;
+
+                // Use custom renderer that respects dark/light theme
+                bool dark = back.GetBrightness() < 0.5f;
+                strip.Renderer = new ToolStripProfessionalRenderer(new DarkModeColorTable(dark, back, fore));
+
                 foreach (ToolStripItem item in strip.Items)
                 {
                     ApplyTheme(item, back, fore);
@@ -167,6 +217,25 @@ namespace SAM.WinForms
                 var page = (TabPage)o;
                 page.UseVisualStyleBackColor = false;
             });
+
+            // ComboBox dropdown arrow theming.
+            RegisterHandler(typeof(ComboBox), (o, back, fore) =>
+            {
+                var combo = (ComboBox)o;
+                combo.FlatStyle = FlatStyle.Flat;
+                ApplyComboBoxTheme(combo, back);
+            });
+
+            // ToolStripComboBox dropdown arrow theming.
+            RegisterHandler(typeof(ToolStripComboBox), (o, back, fore) =>
+            {
+                var toolStripCombo = (ToolStripComboBox)o;
+                toolStripCombo.FlatStyle = FlatStyle.Flat;
+                if (toolStripCombo.Control is ComboBox combo)
+                {
+                    ApplyComboBoxTheme(combo, back);
+                }
+            });
         }
 
         /// <summary>
@@ -241,6 +310,48 @@ namespace SAM.WinForms
                     _ = DwmSetWindowAttribute(headerHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
                     _ = SetWindowTheme(headerHandle, dark ? "ItemsView" : "Explorer", null);
                 }
+            }
+        }
+
+        private static void ApplyComboBoxTheme(ComboBox combo, Color back)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false)
+            {
+                return;
+            }
+
+            // Determine if background is dark or light to set appropriate theme.
+            bool dark = back.GetBrightness() < 0.5f;
+            if (combo.IsHandleCreated == false)
+            {
+                var handle = combo.Handle; // force handle creation
+            }
+
+            int useDark = dark ? 1 : 0;
+            _ = DwmSetWindowAttribute(combo.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
+
+            // Try multiple theme names for better compatibility
+            if (dark)
+            {
+                // Try DarkMode themes in order of preference
+                _ = SetWindowTheme(combo.Handle, "DarkMode_Explorer", null);
+            }
+            else
+            {
+                _ = SetWindowTheme(combo.Handle, "Explorer", null);
+            }
+
+            // Get the dropdown button child window and theme it
+            IntPtr dropdownButton = FindWindowEx(combo.Handle, IntPtr.Zero, "ComboLBox", null);
+            if (dropdownButton == IntPtr.Zero)
+            {
+                dropdownButton = GetWindow(combo.Handle, GW_CHILD);
+            }
+
+            if (dropdownButton != IntPtr.Zero)
+            {
+                _ = DwmSetWindowAttribute(dropdownButton, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
+                _ = SetWindowTheme(dropdownButton, dark ? "DarkMode_Explorer" : "Explorer", null);
             }
         }
 
@@ -467,6 +578,7 @@ namespace SAM.WinForms
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int LVM_GETHEADER = 0x1000 + 31;
+        private const int GW_CHILD = 5;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int attrValue, int attrSize);
@@ -476,6 +588,12 @@ namespace SAM.WinForms
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetWindow(IntPtr hWnd, int uCmd);
     }
 }
 
