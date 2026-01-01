@@ -49,7 +49,6 @@ namespace SAM.Picker
     internal partial class GamePicker : Form
     {
         private readonly API.Client _SteamClient;
-        private readonly HttpClient _HttpClient;
 
         private readonly Dictionary<uint, GameInfo> _Games;
         private readonly List<GameInfo> _FilteredGames;
@@ -168,13 +167,8 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
-            this._HttpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds),
-            };
             this.FormClosed += (_, _) =>
             {
-                this._HttpClient.Dispose();
                 SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
             };
 
@@ -390,18 +384,17 @@ namespace SAM.Picker
 
         private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
         private const int MaxLogoDimension = 1024; // px
-        private const int HttpClientTimeoutSeconds = 30;
 
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            HttpResponseMessage response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
+            HttpResponseMessage response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound &&
                 uri.Host.Equals("shared.cloudflare.steamstatic.com", StringComparison.OrdinalIgnoreCase))
             {
                 response.Dispose();
                 var fallbackUri = new UriBuilder(uri) { Host = "shared.steamstatic.com" }.Uri;
-                response = await this._HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
+                response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
             }
 
             using (response)
@@ -454,7 +447,7 @@ namespace SAM.Picker
             bool usedLocal;
             byte[] bytes = GameList.Load(
                 AppDomain.CurrentDomain.BaseDirectory,
-                this._HttpClient,
+                WinForms.HttpClientManager.Client,
                 out usedLocal);
 
             //Silent load from local file if network fails

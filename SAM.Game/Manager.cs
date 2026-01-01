@@ -48,14 +48,11 @@ namespace SAM.Game
         private readonly long _GameId;
         private readonly API.Client _SteamClient;
 
-        private readonly HttpClient _HttpClient;
-
         private readonly string _IconCacheDirectory;
         private bool _UseIconCache;
 
         private const int MaxIconBytes = 512 * 1024; // 512 KB
         private const int MaxIconDimension = 1024; // px
-        private const int HttpClientTimeoutSeconds = 30;
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
         private const int MouseMoveDelayMs = 12; // Milliseconds between mouse movements
@@ -210,13 +207,8 @@ namespace SAM.Game
             this._GameId = gameId;
             this._SteamClient = client;
 
-            this._HttpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds),
-            };
             this.FormClosed += (_, _) =>
             {
-                this._HttpClient.Dispose();
                 SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
             };
             SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
@@ -353,7 +345,7 @@ namespace SAM.Game
             DebugLogger.Log($"Downloading icon from '{builder.Uri}'.");
 
             using var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
-            using var response = await this._HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await WinForms.HttpClientManager.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
             var contentLength = response.Content.Headers.ContentLength;
