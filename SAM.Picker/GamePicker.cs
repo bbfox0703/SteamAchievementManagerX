@@ -646,51 +646,16 @@ namespace SAM.Picker
             if (this._UseIconCache == true)
             {
                 cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
-                try
-                {
-                    if (File.Exists(cacheFile) == true)
-                    {
-                        var bytes = File.ReadAllBytes(cacheFile);
-                        if (bytes.Length <= DownloadLimits.MaxGameLogoBytes)
-                        {
-                            using var stream = new MemoryStream(bytes, false);
-                            try
-                            {
-                                using var image = Image.FromStream(
-                                    stream,
-                                    useEmbeddedColorManagement: false,
-                                    validateImageData: true);
-                                if (image.Width <= DownloadLimits.MaxImageDimension && image.Height <= DownloadLimits.MaxImageDimension)
-                                {
-                                    Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                    e.Result = new LogoInfo(info.Id, bitmap);
-                                    return;
-                                }
-                            }
-                            catch (ArgumentException ex)
-                            {
-                                DebugLogger.Log($"Invalid image data, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                            catch (OutOfMemoryException ex)
-                            {
-                                DebugLogger.Log($"Out of memory loading image, deleting cache: {cacheFile}", ex);
-                                try { File.Delete(cacheFile); }
-                                catch (Exception deleteEx)
-                                {
-                                    DebugLogger.Log($"Failed to delete cache file: {cacheFile}", deleteEx);
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception)
+                using var cacheResult = ImageCacheHelper.TryLoadFromCache(cacheFile, DownloadLimits.MaxGameLogoBytes);
+                if (cacheResult.DisableCache)
                 {
                     this._UseIconCache = false;
+                }
+                else if (cacheResult.Success && cacheResult.Image != null)
+                {
+                    Bitmap bitmap = cacheResult.Image.ResizeToFit(this._LogoImageList.ImageSize);
+                    e.Result = new LogoInfo(info.Id, bitmap);
+                    return;
                 }
             }
 
@@ -711,69 +676,89 @@ namespace SAM.Picker
 
                 Uri nonNullUri = uri;
 
-                try
+                var result = TryDownloadAndProcessImage(nonNullUri, info.Id, this._LogoImageList.ImageSize);
+                if (result.success)
                 {
-                    // Use Task.Run to avoid deadlock when blocking on async operations
-                    var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
-                        await this.DownloadDataAsync(nonNullUri).ConfigureAwait(false)
-                    ).GetAwaiter().GetResult();
-                    if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
-                    {
-                        throw new InvalidDataException("Invalid content type");
-                    }
-
-                    using (MemoryStream stream = new(data, false))
-                    {
-                        try
-                        {
-                            using (var image = Image.FromStream(
-                                       stream,
-                                       useEmbeddedColorManagement: false,
-                                       validateImageData: true))
-                            {
-                                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
-                                {
-                                    throw new InvalidDataException("Image dimensions too large");
-                                }
-
-                                Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
-                                e.Result = new LogoInfo(info.Id, bitmap);
-                                info.ImageUrl = url;
-
-                                if (this._UseIconCache == true && cacheFile != null)
-                                {
-                                    try
-                                    {
-                                        var cacheData = bitmap.ToPngBytes();
-                                        File.WriteAllBytes(cacheFile, cacheData);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        this._UseIconCache = false;
-                                    }
-                                }
-                                return;
-                            }
-                        }
-                        catch (ArgumentException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
-                        catch (OutOfMemoryException)
-                        {
-                            e.Result = new LogoInfo(info.Id, null);
-                            return;
-                        }
-                    }
+                    e.Result = new LogoInfo(info.Id, result.bitmap);
+                    info.ImageUrl = url;
+                    SaveToCache(result.bitmap, cacheFile);
+                    return;
                 }
-                catch (Exception ex)
+                if (result.fatalError)
                 {
-                    DebugLogger.Log(_($"Failed to download image for app {info.Id} from {url}: {ex}"));
+                    e.Result = new LogoInfo(info.Id, null);
+                    return;
                 }
             }
 
             e.Result = new LogoInfo(info.Id, null);
+        }
+
+        private (bool success, bool fatalError, Bitmap? bitmap) TryDownloadAndProcessImage(Uri uri, uint appId, Size targetSize)
+        {
+            try
+            {
+                var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
+                    await this.DownloadDataAsync(uri).ConfigureAwait(false)
+                ).GetAwaiter().GetResult();
+
+                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    DebugLogger.Log(_($"Invalid content type for app {appId}: {contentType}"));
+                    return (false, false, null);
+                }
+
+                return TryProcessImageData(data, appId, targetSize);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(_($"Failed to download image for app {appId} from {uri}: {ex}"));
+                return (false, false, null);
+            }
+        }
+
+        private (bool success, bool fatalError, Bitmap? bitmap) TryProcessImageData(byte[] data, uint appId, Size targetSize)
+        {
+            using var stream = new MemoryStream(data, false);
+            try
+            {
+                using var image = Image.FromStream(stream, useEmbeddedColorManagement: false, validateImageData: true);
+
+                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
+                {
+                    DebugLogger.Log(_($"Image dimensions too large for app {appId}: {image.Width}x{image.Height}"));
+                    return (false, false, null);
+                }
+
+                var bitmap = image.ResizeToFit(targetSize);
+                return (true, false, bitmap);
+            }
+            catch (ArgumentException)
+            {
+                return (false, true, null);
+            }
+            catch (OutOfMemoryException)
+            {
+                return (false, true, null);
+            }
+        }
+
+        private void SaveToCache(Bitmap? bitmap, string? cacheFile)
+        {
+            if (bitmap == null || cacheFile == null || this._UseIconCache == false)
+            {
+                return;
+            }
+
+            try
+            {
+                var cacheData = bitmap.ToPngBytes();
+                File.WriteAllBytes(cacheFile, cacheData);
+            }
+            catch (Exception)
+            {
+                this._UseIconCache = false;
+            }
         }
 
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
@@ -843,130 +828,11 @@ namespace SAM.Picker
             }
         }
 
-        private static bool TrySanitizeCandidate(string candidate, out string sanitized)
-        {
-            sanitized = Path.GetFileName(candidate);
-
-            if (candidate.IndexOf("..", StringComparison.Ordinal) >= 0 ||
-                candidate.IndexOf(':') >= 0)
-            {
-                return false;
-            }
-
-            if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Scheme) == false)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         private string GetGameImageUrl(uint id)
         {
-            string candidate;
-
-            var currentLanguage = "";
-
-            if (_LanguageComboBox.Text.Length == 0)
-            {
-                currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
-                _LanguageComboBox.Text = currentLanguage;
-            }
-            else
-            {
-                currentLanguage = _LanguageComboBox.Text;
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
-
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid small_capsule path for app {id} language {currentLanguage}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing small_capsule for app {id} language {currentLanguage}"));
-            }
-
-            if (currentLanguage != "english")
-            {
-                candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
-                if (string.IsNullOrEmpty(candidate) == false)
-                {
-                    if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                    {
-                        return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
-                    }
-                    else
-                    {
-                        DebugLogger.Log(_($"Invalid small_capsule path for app {id} language english: {candidate}"));
-                    }
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Missing small_capsule for app {id} language english"));
-                }
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid logo path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing logo for app {id}"));
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "library_600x900");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid library_600x900 path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing library_600x900 for app {id}"));
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "header_image");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid header_image path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing header_image for app {id}"));
-            }
-            return _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
-
+            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
+            var url = GameImageUrlResolver.GetGameImageUrl(this._SteamClient.SteamApps001.GetAppData, id, currentLanguage);
+            return url ?? _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
         }
 
         private void AddGameToLogoQueue(GameInfo info)

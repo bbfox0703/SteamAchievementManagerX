@@ -435,16 +435,7 @@ namespace SAM.Game
             {
                 return false;
             }
-            var currentLanguage = "";
-            if (_LanguageComboBox.Text.Length == 0)
-            {
-                currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
-                _LanguageComboBox.Text = currentLanguage;
-            }
-            else
-            {
-                currentLanguage = _LanguageComboBox.Text;
-            }
+            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
 
             this._achievementDefinitions.Clear();
             this._statDefinitions.Clear();
@@ -474,81 +465,18 @@ namespace SAM.Game
                     }
 
                     case APITypes.UserStatType.Integer:
-                    {
-                        var id = stat["name"].AsString("");
-                        string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-                        this._statDefinitions.Add(new Stats.IntegerStatDefinition()
-                        {
-                            Id = stat["name"].AsString(""),
-                            DisplayName = name,
-                            MinValue = stat["min"].AsInteger(int.MinValue),
-                            MaxValue = stat["max"].AsInteger(int.MaxValue),
-                            MaxChange = stat["maxchange"].AsInteger(0),
-                            IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                            SetByTrustedGameServer = stat["bSetByTrustedGS"].AsBoolean(false),
-                            DefaultValue = stat["default"].AsInteger(0),
-                            Permission = stat["permission"].AsInteger(0),
-                        });
+                        this._statDefinitions.Add(ParseIntegerStat(stat, currentLanguage));
                         break;
-                    }
 
                     case APITypes.UserStatType.Float:
                     case APITypes.UserStatType.AverageRate:
-                    {
-                        var id = stat["name"].AsString("");
-                        string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-                        this._statDefinitions.Add(new Stats.FloatStatDefinition()
-                        {
-                            Id = stat["name"].AsString(""),
-                            DisplayName = name,
-                            MinValue = stat["min"].AsFloat(float.MinValue),
-                            MaxValue = stat["max"].AsFloat(float.MaxValue),
-                            MaxChange = stat["maxchange"].AsFloat(0.0f),
-                            IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                            DefaultValue = stat["default"].AsFloat(0.0f),
-                            Permission = stat["permission"].AsInteger(0),
-                        });
+                        this._statDefinitions.Add(ParseFloatStat(stat, currentLanguage));
                         break;
-                    }
 
                     case APITypes.UserStatType.Achievements:
                     case APITypes.UserStatType.GroupAchievements:
-                    {
-                        if (stat.Children != null)
-                        {
-                            foreach (var bits in stat.Children.Where(
-                                b => string.Compare(b.Name, "bits", StringComparison.InvariantCultureIgnoreCase) == 0))
-                            {
-                                if (bits.Valid == false ||
-                                    bits.Children == null)
-                                {
-                                    continue;
-                                }
-
-                                foreach (var bit in bits.Children)
-                                {
-                                    string id = bit["name"].AsString("");
-                                    string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
-                                    string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
-
-                                    this._achievementDefinitions.Add(new()
-                                    {
-                                        Id = id,
-                                        Name = name,
-                                        Description = desc,
-                                        IconNormal = bit["display"]["icon"].AsString(""),
-                                        IconLocked = bit["display"]["icon_gray"].AsString(""),
-                                        IsHidden = bit["display"]["hidden"].AsBoolean(false),
-                                        Permission = bit["permission"].AsInteger(0),
-                                    });
-                                }
-                            }
-                        }
-
+                        ParseAchievements(stat, currentLanguage);
                         break;
-                    }
 
                     default:
                     {
@@ -558,6 +486,78 @@ namespace SAM.Game
             }
 
             return true;
+        }
+
+        private Stats.IntegerStatDefinition ParseIntegerStat(KeyValue stat, string currentLanguage)
+        {
+            var id = stat["name"].AsString("");
+            string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
+
+            return new Stats.IntegerStatDefinition()
+            {
+                Id = id,
+                DisplayName = name,
+                MinValue = stat["min"].AsInteger(int.MinValue),
+                MaxValue = stat["max"].AsInteger(int.MaxValue),
+                MaxChange = stat["maxchange"].AsInteger(0),
+                IncrementOnly = stat["incrementonly"].AsBoolean(false),
+                SetByTrustedGameServer = stat["bSetByTrustedGS"].AsBoolean(false),
+                DefaultValue = stat["default"].AsInteger(0),
+                Permission = stat["permission"].AsInteger(0),
+            };
+        }
+
+        private Stats.FloatStatDefinition ParseFloatStat(KeyValue stat, string currentLanguage)
+        {
+            var id = stat["name"].AsString("");
+            string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
+
+            return new Stats.FloatStatDefinition()
+            {
+                Id = id,
+                DisplayName = name,
+                MinValue = stat["min"].AsFloat(float.MinValue),
+                MaxValue = stat["max"].AsFloat(float.MaxValue),
+                MaxChange = stat["maxchange"].AsFloat(0.0f),
+                IncrementOnly = stat["incrementonly"].AsBoolean(false),
+                DefaultValue = stat["default"].AsFloat(0.0f),
+                Permission = stat["permission"].AsInteger(0),
+            };
+        }
+
+        private void ParseAchievements(KeyValue stat, string currentLanguage)
+        {
+            if (stat.Children == null)
+            {
+                return;
+            }
+
+            foreach (var bits in stat.Children.Where(
+                b => string.Compare(b.Name, "bits", StringComparison.InvariantCultureIgnoreCase) == 0))
+            {
+                if (bits.Valid == false || bits.Children == null)
+                {
+                    continue;
+                }
+
+                foreach (var bit in bits.Children)
+                {
+                    string id = bit["name"].AsString("");
+                    string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
+                    string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
+
+                    this._achievementDefinitions.Add(new()
+                    {
+                        Id = id,
+                        Name = name,
+                        Description = desc,
+                        IconNormal = bit["display"]["icon"].AsString(""),
+                        IconLocked = bit["display"]["icon_gray"].AsString(""),
+                        IsHidden = bit["display"]["hidden"].AsBoolean(false),
+                        Permission = bit["permission"].AsInteger(0),
+                    });
+                }
+            }
         }
 
         private void OnUserStatsReceived(APITypes.UserStatsReceived param)
@@ -695,60 +695,9 @@ namespace SAM.Game
                     }
                 }
 
-                Stats.AchievementInfo info = new()
-                {
-                    Id = def.Id,
-                    IsAchieved = isAchieved,
-                    UnlockTime = isAchieved == true && unlockTime > 0
-                        ? DateTimeOffset.FromUnixTimeSeconds(unlockTime).LocalDateTime
-                        : null,
-                    IconNormal = string.IsNullOrEmpty(def.IconNormal) ? null : def.IconNormal,
-                    IconLocked = string.IsNullOrEmpty(def.IconLocked) ? def.IconNormal : def.IconLocked,
-                    Permission = def.Permission,
-                    Name = def.Name,
-                    Description = def.Description,
-                };
-
-                ListViewItem item = new()
-                {
-                    Checked = isAchieved,
-                    Tag = info,
-                    Text = info.Name,
-                    BackColor = (def.Permission & 3) == 0
-                        ? this.BackColor
-                        : (light
-                            ? ControlPaint.Light(this.BackColor)
-                            : ControlPaint.Dark(this.BackColor)),
-                    ForeColor = this.ForeColor,
-                };
-
+                var info = CreateAchievementInfo(def, isAchieved, unlockTime);
+                var item = CreateAchievementListViewItem(info, def, light);
                 info.Item = item;
-
-                if (item.Text.StartsWith("#", StringComparison.InvariantCulture) == true)
-                {
-                    item.Text = info.Id;
-                    item.SubItems.Add("");
-                }
-                else
-                {
-                    item.SubItems.Add(info.Description);
-                }
-
-                item.SubItems.Add(info.UnlockTime.HasValue == true
-                    ? info.UnlockTime.Value.ToString()
-                    : "");
-
-                //----------------
-                item.SubItems.Add(info.Id);
-                item.SubItems.Add("-1");
-                //----------------
-
-                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
-                {
-                    subItem.BackColor = item.BackColor;
-                    subItem.ForeColor = item.ForeColor;
-                }
-
                 info.ImageIndex = 0;
 
                 // Queue the icon for download if it's not already available
@@ -763,6 +712,64 @@ namespace SAM.Game
             this._IsUpdatingAchievementList = false;
 
             this.DownloadNextIcon();
+        }
+
+        private Stats.AchievementInfo CreateAchievementInfo(Stats.AchievementDefinition def, bool isAchieved, uint unlockTime)
+        {
+            return new Stats.AchievementInfo()
+            {
+                Id = def.Id,
+                IsAchieved = isAchieved,
+                UnlockTime = isAchieved == true && unlockTime > 0
+                    ? DateTimeOffset.FromUnixTimeSeconds(unlockTime).LocalDateTime
+                    : null,
+                IconNormal = string.IsNullOrEmpty(def.IconNormal) ? null : def.IconNormal,
+                IconLocked = string.IsNullOrEmpty(def.IconLocked) ? def.IconNormal : def.IconLocked,
+                Permission = def.Permission,
+                Name = def.Name,
+                Description = def.Description,
+            };
+        }
+
+        private ListViewItem CreateAchievementListViewItem(Stats.AchievementInfo info, Stats.AchievementDefinition def, bool light)
+        {
+            ListViewItem item = new()
+            {
+                Checked = info.IsAchieved,
+                Tag = info,
+                Text = info.Name,
+                BackColor = (def.Permission & 3) == 0
+                    ? this.BackColor
+                    : (light
+                        ? ControlPaint.Light(this.BackColor)
+                        : ControlPaint.Dark(this.BackColor)),
+                ForeColor = this.ForeColor,
+            };
+
+            if (item.Text.StartsWith("#", StringComparison.InvariantCulture) == true)
+            {
+                item.Text = info.Id;
+                item.SubItems.Add("");
+            }
+            else
+            {
+                item.SubItems.Add(info.Description);
+            }
+
+            item.SubItems.Add(info.UnlockTime.HasValue == true
+                ? info.UnlockTime.Value.ToString()
+                : "");
+
+            item.SubItems.Add(info.Id);
+            item.SubItems.Add("-1");
+
+            foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+            {
+                subItem.BackColor = item.BackColor;
+                subItem.ForeColor = item.ForeColor;
+            }
+
+            return item;
         }
 
         private void GetStatistics()
@@ -836,52 +843,17 @@ namespace SAM.Game
                 var cachePath = this.GetAchievementCachePath(info);
                 if (cachePath != null)
                 {
-                    try
-                    {
-                        DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
-                        if (File.Exists(cachePath) == true)
-                        {
-                            var bytes = File.ReadAllBytes(cachePath);
-                            if (bytes.Length <= DownloadLimits.MaxAchievementIconBytes)
-                            {
-                                using var stream = new MemoryStream(bytes, false);
-                                try
-                                {
-                                    using var image = Image.FromStream(
-                                        stream,
-                                        useEmbeddedColorManagement: false,
-                                        validateImageData: true);
-                                    if (image.Width <= DownloadLimits.MaxImageDimension && image.Height <= DownloadLimits.MaxImageDimension)
-                                    {
-                                        this.AddAchievementIcon(info, image);
-                                        DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
-                                        return;
-                                    }
-                                }
-                                catch (ArgumentException ex)
-                                {
-                                    DebugLogger.Log($"Invalid image data, deleting cache: {cachePath}", ex);
-                                    try { File.Delete(cachePath); }
-                                    catch (Exception deleteEx)
-                                    {
-                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
-                                    }
-                                }
-                                catch (OutOfMemoryException ex)
-                                {
-                                    DebugLogger.Log($"Out of memory loading image, deleting cache: {cachePath}", ex);
-                                    try { File.Delete(cachePath); }
-                                    catch (Exception deleteEx)
-                                    {
-                                        DebugLogger.Log($"Failed to delete cache file: {cachePath}", deleteEx);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception)
+                    DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
+                    using var cacheResult = ImageCacheHelper.TryLoadFromCache(cachePath, DownloadLimits.MaxAchievementIconBytes);
+                    if (cacheResult.DisableCache)
                     {
                         this._UseIconCache = false;
+                    }
+                    else if (cacheResult.Success && cacheResult.Image != null)
+                    {
+                        this.AddAchievementIcon(info, cacheResult.Image);
+                        DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
+                        return;
                     }
                 }
             }
