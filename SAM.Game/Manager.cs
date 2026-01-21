@@ -34,9 +34,11 @@ using System.Threading;
 using System.Windows.Forms;
 using SAM.WinForms;
 using SAM.API;
+using SAM.API.Constants;
+using SAM.API.Utilities;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
-using static SAM.Game.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using APITypes = SAM.API.Types;
 
@@ -51,8 +53,6 @@ namespace SAM.Game
         private readonly string _IconCacheDirectory;
         private bool _UseIconCache;
 
-        private const int MaxIconBytes = 512 * 1024; // 512 KB
-        private const int MaxIconDimension = 1024; // px
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
         private const int MouseMoveDelayMs = 12; // Milliseconds between mouse movements
@@ -75,33 +75,6 @@ namespace SAM.Game
         private POINT _lastMousePos;
 
         private Color _BorderColor;
-
-        private const int WM_NCHITTEST = 0x0084;
-        private const int WM_PAINT = 0x000F;
-        private const int HTCLIENT = 1;
-        private const int HTCAPTION = 2;
-        private const int HTLEFT = 10;
-        private const int HTRIGHT = 11;
-        private const int HTTOP = 12;
-        private const int HTTOPLEFT = 13;
-        private const int HTTOPRIGHT = 14;
-        private const int HTBOTTOM = 15;
-        private const int HTBOTTOMLEFT = 16;
-        private const int HTBOTTOMRIGHT = 17;
-        private const int WM_SETTINGCHANGE = 0x001A;
-        private const int WM_THEMECHANGED = 0x031A;
-        private const int WM_NCRBUTTONUP = 0x00A5;
-        private const int WM_NCLBUTTONDOWN = 0x00A1;
-        private const int WM_SYSCOMMAND = 0x0112;
-        private const int TPM_LEFTBUTTON = 0x0000;
-        private const int TPM_RIGHTBUTTON = 0x0002;
-        private const int TPM_RETURNCMD = 0x0100;
-
-        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-        private const int DWMSBT_MAINWINDOW = 2;
-        private const int DWMWCP_ROUND = 2;
 
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int X, int Y);
@@ -349,7 +322,7 @@ namespace SAM.Game
             response.EnsureSuccessStatusCode();
 
             var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > MaxIconBytes)
+            if (contentLength == null || contentLength.Value > DownloadLimits.MaxAchievementIconBytes)
             {
                 throw new HttpRequestException("Response too large or missing length");
             }
@@ -361,7 +334,7 @@ namespace SAM.Game
             }
 
             using var stream = await response.Content.ReadAsStreamAsync();
-            var data = ReadWithLimit(stream, MaxIconBytes);
+            var data = StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxAchievementIconBytes);
 
             using var imageStream = new MemoryStream(data, false);
             try
@@ -370,7 +343,7 @@ namespace SAM.Game
                     imageStream,
                     useEmbeddedColorManagement: false,
                     validateImageData: true);
-                if (image.Width > MaxIconDimension || image.Height > MaxIconDimension)
+                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
                 {
                     throw new InvalidDataException("Image dimensions too large");
                 }
@@ -406,23 +379,6 @@ namespace SAM.Game
             }
         }
 
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
-        }
 
         private static string TranslateError(int id) => id switch
         {
@@ -886,7 +842,7 @@ namespace SAM.Game
                         if (File.Exists(cachePath) == true)
                         {
                             var bytes = File.ReadAllBytes(cachePath);
-                            if (bytes.Length <= MaxIconBytes)
+                            if (bytes.Length <= DownloadLimits.MaxAchievementIconBytes)
                             {
                                 using var stream = new MemoryStream(bytes, false);
                                 try
@@ -895,7 +851,7 @@ namespace SAM.Game
                                         stream,
                                         useEmbeddedColorManagement: false,
                                         validateImageData: true);
-                                    if (image.Width <= MaxIconDimension && image.Height <= MaxIconDimension)
+                                    if (image.Width <= DownloadLimits.MaxImageDimension && image.Height <= DownloadLimits.MaxImageDimension)
                                     {
                                         this.AddAchievementIcon(info, image);
                                         DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
@@ -1534,10 +1490,10 @@ namespace SAM.Game
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_NCHITTEST)
+            if (m.Msg == WindowMessages.WM_NCHITTEST)
             {
                 base.WndProc(ref m);
-                if ((int)m.Result == HTCLIENT)
+                if ((int)m.Result == HitTestResults.HTCLIENT)
                 {
                     int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                     int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -1548,26 +1504,26 @@ namespace SAM.Game
                     bool right = pt.X >= this.ClientSize.Width - grip;
                     bool bottom = pt.Y >= this.ClientSize.Height - grip;
 
-                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
-                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
-                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
-                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
-                    else if (top) m.Result = (IntPtr)HTTOP;
-                    else if (left) m.Result = (IntPtr)HTLEFT;
-                    else if (right) m.Result = (IntPtr)HTRIGHT;
-                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    if (top && left) m.Result = (IntPtr)HitTestResults.HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HitTestResults.HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HitTestResults.HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HitTestResults.HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HitTestResults.HTTOP;
+                    else if (left) m.Result = (IntPtr)HitTestResults.HTLEFT;
+                    else if (right) m.Result = (IntPtr)HitTestResults.HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HitTestResults.HTBOTTOM;
                     else
                     {
                         Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
-                            m.Result = (IntPtr)HTCAPTION;
+                            m.Result = (IntPtr)HitTestResults.HTCAPTION;
                         }
                     }
                 }
                 return;
             }
-            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            else if (m.Msg == WindowMessages.WM_NCRBUTTONUP && m.WParam == (IntPtr)HitTestResults.HTCAPTION)
             {
                 int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                 int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -1577,13 +1533,13 @@ namespace SAM.Game
 
             base.WndProc(ref m);
 
-            if (m.Msg == WM_PAINT)
+            if (m.Msg == WindowMessages.WM_PAINT)
             {
                 using var g = Graphics.FromHwnd(this.Handle);
                 using var pen = new Pen(this._BorderColor);
                 g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
             }
-            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
                 this.TryApplyMica();
@@ -1600,7 +1556,7 @@ namespace SAM.Game
                     return;
                 }
                 ReleaseCapture();
-                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_NCLBUTTONDOWN, (IntPtr)HitTestResults.HTCAPTION, IntPtr.Zero);
             }
             else if (e.Button == MouseButtons.Right)
             {
@@ -1612,10 +1568,10 @@ namespace SAM.Game
         private void ShowSystemMenu(Point screenPoint)
         {
             IntPtr hMenu = GetSystemMenu(this.Handle, false);
-            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            int command = TrackPopupMenuEx(hMenu, TrackPopupMenuFlags.TPM_RIGHTBUTTON | TrackPopupMenuFlags.TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
             if (command != 0)
             {
-                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
             }
         }
 
@@ -1631,19 +1587,19 @@ namespace SAM.Game
                 return;
             }
 
-            int backdrop = DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+            int backdrop = DwmAttributes.DWMSBT_MAINWINDOW;
+            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
 
             int dark = this.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
         }
 
         private void ApplyRoundedCorners()
         {
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
             {
-                int pref = DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+                int pref = DwmAttributes.DWMWCP_ROUND;
+                DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
             }
             else
             {

@@ -39,9 +39,11 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
 using SAM.API;
+using SAM.API.Constants;
+using SAM.API.Utilities;
 using SAM.WinForms;
 using Microsoft.Win32;
-using static SAM.Picker.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
 namespace SAM.Picker
@@ -66,33 +68,6 @@ namespace SAM.Picker
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
         private Color _BorderColor;
-
-        private const int WM_NCHITTEST = 0x0084;
-        private const int WM_PAINT = 0x000F;
-        private const int HTCLIENT = 1;
-        private const int HTCAPTION = 2;
-        private const int HTLEFT = 10;
-        private const int HTRIGHT = 11;
-        private const int HTTOP = 12;
-        private const int HTTOPLEFT = 13;
-        private const int HTTOPRIGHT = 14;
-        private const int HTBOTTOM = 15;
-        private const int HTBOTTOMLEFT = 16;
-        private const int HTBOTTOMRIGHT = 17;
-        private const int WM_SETTINGCHANGE = 0x001A;
-        private const int WM_THEMECHANGED = 0x031A;
-        private const int WM_NCRBUTTONUP = 0x00A5;
-        private const int WM_NCLBUTTONDOWN = 0x00A1;
-        private const int WM_SYSCOMMAND = 0x0112;
-        private const int TPM_LEFTBUTTON = 0x0000;
-        private const int TPM_RIGHTBUTTON = 0x0002;
-        private const int TPM_RETURNCMD = 0x0100;
-
-        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-        private const int DWMSBT_MAINWINDOW = 2;
-        private const int DWMWCP_ROUND = 2;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -209,10 +184,10 @@ namespace SAM.Picker
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_NCHITTEST)
+            if (m.Msg == WindowMessages.WM_NCHITTEST)
             {
                 base.WndProc(ref m);
-                if ((int)m.Result == HTCLIENT)
+                if ((int)m.Result == HitTestResults.HTCLIENT)
                 {
                     int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                     int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -223,26 +198,26 @@ namespace SAM.Picker
                     bool right = pt.X >= this.ClientSize.Width - grip;
                     bool bottom = pt.Y >= this.ClientSize.Height - grip;
 
-                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
-                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
-                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
-                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
-                    else if (top) m.Result = (IntPtr)HTTOP;
-                    else if (left) m.Result = (IntPtr)HTLEFT;
-                    else if (right) m.Result = (IntPtr)HTRIGHT;
-                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    if (top && left) m.Result = (IntPtr)HitTestResults.HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HitTestResults.HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HitTestResults.HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HitTestResults.HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HitTestResults.HTTOP;
+                    else if (left) m.Result = (IntPtr)HitTestResults.HTLEFT;
+                    else if (right) m.Result = (IntPtr)HitTestResults.HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HitTestResults.HTBOTTOM;
                     else
                     {
                         Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
-                            m.Result = (IntPtr)HTCAPTION;
+                            m.Result = (IntPtr)HitTestResults.HTCAPTION;
                         }
                     }
                 }
                 return;
             }
-            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            else if (m.Msg == WindowMessages.WM_NCRBUTTONUP && m.WParam == (IntPtr)HitTestResults.HTCAPTION)
             {
                 int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                 int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -252,13 +227,13 @@ namespace SAM.Picker
 
             base.WndProc(ref m);
 
-            if (m.Msg == WM_PAINT)
+            if (m.Msg == WindowMessages.WM_PAINT)
             {
                 using var g = Graphics.FromHwnd(this.Handle);
                 using var pen = new Pen(this._BorderColor);
                 g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
             }
-            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
                 this.TryApplyMica();
@@ -274,7 +249,7 @@ namespace SAM.Picker
                     return;
                 }
                 ReleaseCapture();
-                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_NCLBUTTONDOWN, (IntPtr)HitTestResults.HTCAPTION, IntPtr.Zero);
             }
             else if (e.Button == MouseButtons.Right)
             {
@@ -286,10 +261,10 @@ namespace SAM.Picker
         private void ShowSystemMenu(Point screenPoint)
         {
             IntPtr hMenu = GetSystemMenu(this.Handle, false);
-            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            int command = TrackPopupMenuEx(hMenu, TrackPopupMenuFlags.TPM_RIGHTBUTTON | TrackPopupMenuFlags.TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
             if (command != 0)
             {
-                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
             }
         }
 
@@ -305,19 +280,19 @@ namespace SAM.Picker
                 return;
             }
 
-            int backdrop = DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
+            int backdrop = DwmAttributes.DWMSBT_MAINWINDOW;
+            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
 
             int dark = this.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
+            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
         }
 
         private void ApplyRoundedCorners()
         {
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
             {
-                int pref = DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
+                int pref = DwmAttributes.DWMWCP_ROUND;
+                DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
             }
             else
             {
@@ -382,9 +357,6 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
-        private const int MaxLogoDimension = 1024; // px
-
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
             HttpResponseMessage response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
@@ -406,7 +378,7 @@ namespace SAM.Picker
                 {
                     DebugLogger.Log(_($"Missing Content-Length header for {response.RequestMessage!.RequestUri}"));
                 }
-                else if (contentLength.Value > MaxLogoBytes)
+                else if (contentLength.Value > DownloadLimits.MaxGameLogoBytes)
                 {
                     throw new HttpRequestException("Response too large");
                 }
@@ -414,27 +386,9 @@ namespace SAM.Picker
                 var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
                 using var stream = await response.Content.ReadAsStreamAsync();
-                var data = ReadWithLimit(stream, MaxLogoBytes);
+                var data = StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxGameLogoBytes);
                 return (data, contentType);
             }
-        }
-
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[81920];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
         }
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
@@ -697,7 +651,7 @@ namespace SAM.Picker
                     if (File.Exists(cacheFile) == true)
                     {
                         var bytes = File.ReadAllBytes(cacheFile);
-                        if (bytes.Length <= MaxLogoBytes)
+                        if (bytes.Length <= DownloadLimits.MaxGameLogoBytes)
                         {
                             using var stream = new MemoryStream(bytes, false);
                             try
@@ -706,7 +660,7 @@ namespace SAM.Picker
                                     stream,
                                     useEmbeddedColorManagement: false,
                                     validateImageData: true);
-                                if (image.Width <= MaxLogoDimension && image.Height <= MaxLogoDimension)
+                                if (image.Width <= DownloadLimits.MaxImageDimension && image.Height <= DownloadLimits.MaxImageDimension)
                                 {
                                     Bitmap bitmap = image.ResizeToFit(this._LogoImageList.ImageSize);
                                     e.Result = new LogoInfo(info.Id, bitmap);
@@ -777,7 +731,7 @@ namespace SAM.Picker
                                        useEmbeddedColorManagement: false,
                                        validateImageData: true))
                             {
-                                if (image.Width > MaxLogoDimension || image.Height > MaxLogoDimension)
+                                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
                                 {
                                     throw new InvalidDataException("Image dimensions too large");
                                 }

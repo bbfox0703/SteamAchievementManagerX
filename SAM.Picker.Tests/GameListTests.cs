@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Text;
+using SAM.API.Constants;
 using SAM.Picker;
 using Xunit;
 
@@ -111,7 +112,7 @@ public class GameListTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            byte[] data = new byte[GameList.MaxDownloadBytes + 1];
+            byte[] data = new byte[DownloadLimits.MaxGameListBytes + 1];
             var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(data),
