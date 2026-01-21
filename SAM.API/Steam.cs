@@ -23,7 +23,6 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.Win32;
 
 namespace SAM.API
@@ -171,27 +170,6 @@ namespace SAM.API
 
                 binHandle = Native.AddDllDirectory(binPath);
                 if (binHandle == IntPtr.Zero)
-                {
-                    return false;
-                }
-
-                try
-                {
-                    using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(libraryPath));
-                    if (certificate.Verify() == false)
-                    {
-                        return false;
-                    }
-
-                    // Pin the certificate identity to Valve's known subject
-                    const string ValveSubject = "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US";
-                    var subject = certificate.Subject;
-                    if (string.Equals(subject, ValveSubject, StringComparison.OrdinalIgnoreCase) == false)
-                    {
-                        return false;
-                    }
-                }
-                catch
                 {
                     return false;
                 }
