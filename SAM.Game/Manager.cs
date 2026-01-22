@@ -298,6 +298,30 @@ namespace SAM.Game
 
         private async System.Threading.Tasks.Task<Bitmap?> DownloadIconAsync(Stats.AchievementInfo info)
         {
+            var iconUri = GetIconUri(info);
+            if (iconUri == null)
+            {
+                return null;
+            }
+
+            DebugLogger.Log($"Downloading icon from '{iconUri}'.");
+            var data = await DownloadIconDataAsync(iconUri);
+            if (data == null)
+            {
+                return null;
+            }
+
+            var bitmap = ProcessIconData(data);
+            if (bitmap != null)
+            {
+                SaveIconToCache(info, data);
+            }
+
+            return bitmap;
+        }
+
+        private Uri? GetIconUri(Stats.AchievementInfo info)
+        {
             var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
             if (string.IsNullOrEmpty(icon))
             {
@@ -310,14 +334,15 @@ namespace SAM.Game
                 return null;
             }
 
-            var builder = new UriBuilder("https", "cdn.steamstatic.com")
+            return new UriBuilder("https", "cdn.steamstatic.com")
             {
                 Path = $"/steamcommunity/public/images/apps/{this._GameId}/{Uri.EscapeDataString(fileName)}"
-            };
+            }.Uri;
+        }
 
-            DebugLogger.Log($"Downloading icon from '{builder.Uri}'.");
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
+        private async System.Threading.Tasks.Task<byte[]?> DownloadIconDataAsync(Uri uri)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await WinForms.HttpClientManager.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
@@ -334,40 +359,20 @@ namespace SAM.Game
             }
 
             using var stream = await response.Content.ReadAsStreamAsync();
-            var data = StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxAchievementIconBytes);
+            return StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxAchievementIconBytes);
+        }
 
+        private static Bitmap? ProcessIconData(byte[] data)
+        {
             using var imageStream = new MemoryStream(data, false);
             try
             {
-                using var image = Image.FromStream(
-                    imageStream,
-                    useEmbeddedColorManagement: false,
-                    validateImageData: true);
+                using var image = Image.FromStream(imageStream, useEmbeddedColorManagement: false, validateImageData: true);
                 if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
                 {
-                    throw new InvalidDataException("Image dimensions too large");
+                    return null;
                 }
-
-                Bitmap bitmap = new(image);
-
-                if (this._UseIconCache == true)
-                {
-                    var cachePath = this.GetAchievementCachePath(info);
-                    if (cachePath != null)
-                    {
-                        try
-                        {
-                            DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
-                            File.WriteAllBytes(cachePath, data);
-                        }
-                        catch (Exception)
-                        {
-                            this._UseIconCache = false;
-                        }
-                    }
-                }
-
-                return bitmap;
+                return new Bitmap(image);
             }
             catch (ArgumentException)
             {
@@ -376,6 +381,30 @@ namespace SAM.Game
             catch (OutOfMemoryException)
             {
                 return null;
+            }
+        }
+
+        private void SaveIconToCache(Stats.AchievementInfo info, byte[] data)
+        {
+            if (this._UseIconCache == false)
+            {
+                return;
+            }
+
+            var cachePath = this.GetAchievementCachePath(info);
+            if (cachePath == null)
+            {
+                return;
+            }
+
+            try
+            {
+                DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
+                File.WriteAllBytes(cachePath, data);
+            }
+            catch (Exception)
+            {
+                this._UseIconCache = false;
             }
         }
 
@@ -926,45 +955,25 @@ namespace SAM.Game
 
             foreach (var stat in statistics)
             {
-                if (stat is Stats.IntStatInfo intStat)
+                bool success = stat switch
                 {
-                    if (this._SteamClient.SteamUserStats.SetStatValue(
-                        intStat.Id,
-                        intStat.IntValue) == false)
+                    Stats.IntStatInfo intStat => this._SteamClient.SteamUserStats.SetStatValue(intStat.Id, intStat.IntValue),
+                    Stats.FloatStatInfo floatStat => this._SteamClient.SteamUserStats.SetStatValue(floatStat.Id, floatStat.FloatValue),
+                    _ => throw new InvalidOperationException("unsupported stat type")
+                };
+
+                if (!success)
+                {
+                    if (!silent)
                     {
-                        if (!silent)
-                        {
-                            MessageBox.Show(
-                                this,
-                                $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                                "Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-                        }
-                        return -1;
+                        MessageBox.Show(
+                            this,
+                            $"An error occurred while setting the value for {stat.Id}, aborting store.",
+                            "Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
                     }
-                }
-                else if (stat is Stats.FloatStatInfo floatStat)
-                {
-                    if (this._SteamClient.SteamUserStats.SetStatValue(
-                        floatStat.Id,
-                        floatStat.FloatValue) == false)
-                    {
-                        if (!silent)
-                        {
-                            MessageBox.Show(
-                                this,
-                                $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                                "Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-                        }
-                        return -1;
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("unsupported stat type");
+                    return -1;
                 }
             }
 
