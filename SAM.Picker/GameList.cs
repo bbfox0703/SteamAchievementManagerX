@@ -5,6 +5,7 @@ using System.IO;
 using System.Net.Http;
 using System.Xml;
 using System.Xml.Linq;
+using SAM.API;
 using SAM.API.Constants;
 using SAM.API.Utilities;
 
@@ -78,8 +79,9 @@ namespace SAM.Picker
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to download game list from network: {ex.Message}");
                 bytes = null;
             }
 

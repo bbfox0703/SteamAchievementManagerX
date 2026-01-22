@@ -123,8 +123,9 @@ namespace SAM.Picker
                 Directory.CreateDirectory(this._IconCacheDirectory);
                 this._UseIconCache = true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to create icon cache directory '{this._IconCacheDirectory}': {ex.Message}");
                 this._UseIconCache = false;
             }
 
@@ -764,8 +765,9 @@ namespace SAM.Picker
                 var cacheData = bitmap.ToPngBytes();
                 File.WriteAllBytes(cacheFile, cacheData);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to save logo to cache '{cacheFile}': {ex.Message}");
                 this._UseIconCache = false;
             }
         }

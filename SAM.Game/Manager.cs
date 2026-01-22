@@ -195,8 +195,9 @@ namespace SAM.Game
                 Directory.CreateDirectory(this._IconCacheDirectory);
                 this._UseIconCache = true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to create icon cache directory '{this._IconCacheDirectory}': {ex.Message}");
                 this._UseIconCache = false;
             }
 
@@ -414,8 +415,9 @@ namespace SAM.Game
                 DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
                 File.WriteAllBytes(cachePath, data);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to cache icon '{info.Id}' to '{cachePath}': {ex.Message}");
                 this._UseIconCache = false;
             }
         }
@@ -466,8 +468,9 @@ namespace SAM.Game
                     return false;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogError($"Failed to resolve schema path for game {this._GameId}", ex);
                 return false;
             }
 
