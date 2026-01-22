@@ -320,6 +320,9 @@ namespace SAM.Game
             return bitmap;
         }
 
+        /// <summary>
+        /// Builds the Steam CDN URI for the achievement icon.
+        /// </summary>
         private Uri? GetIconUri(Stats.AchievementInfo info)
         {
             var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
@@ -340,6 +343,9 @@ namespace SAM.Game
             }.Uri;
         }
 
+        /// <summary>
+        /// Downloads icon data from the given URI with size and content-type validation.
+        /// </summary>
         private async System.Threading.Tasks.Task<byte[]?> DownloadIconDataAsync(Uri uri)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -362,6 +368,9 @@ namespace SAM.Game
             return StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxAchievementIconBytes);
         }
 
+        /// <summary>
+        /// Validates and converts raw image data to a Bitmap.
+        /// </summary>
         private static Bitmap? ProcessIconData(byte[] data)
         {
             using var imageStream = new MemoryStream(data, false);
@@ -384,6 +393,9 @@ namespace SAM.Game
             }
         }
 
+        /// <summary>
+        /// Saves icon data to the local cache directory.
+        /// </summary>
         private void SaveIconToCache(Stats.AchievementInfo info, byte[] data)
         {
             if (this._UseIconCache == false)
@@ -517,6 +529,9 @@ namespace SAM.Game
             return true;
         }
 
+        /// <summary>
+        /// Parses an integer stat definition from the VDF schema.
+        /// </summary>
         private Stats.IntegerStatDefinition ParseIntegerStat(KeyValue stat, string currentLanguage)
         {
             var id = stat["name"].AsString("");
@@ -536,6 +551,9 @@ namespace SAM.Game
             };
         }
 
+        /// <summary>
+        /// Parses a float stat definition from the VDF schema.
+        /// </summary>
         private Stats.FloatStatDefinition ParseFloatStat(KeyValue stat, string currentLanguage)
         {
             var id = stat["name"].AsString("");
@@ -554,6 +572,9 @@ namespace SAM.Game
             };
         }
 
+        /// <summary>
+        /// Parses achievement definitions from the VDF schema bits section.
+        /// </summary>
         private void ParseAchievements(KeyValue stat, string currentLanguage)
         {
             if (stat.Children == null)
@@ -743,6 +764,9 @@ namespace SAM.Game
             this.DownloadNextIcon();
         }
 
+        /// <summary>
+        /// Creates an AchievementInfo from definition and current unlock state.
+        /// </summary>
         private Stats.AchievementInfo CreateAchievementInfo(Stats.AchievementDefinition def, bool isAchieved, uint unlockTime)
         {
             return new Stats.AchievementInfo()
@@ -760,6 +784,9 @@ namespace SAM.Game
             };
         }
 
+        /// <summary>
+        /// Creates a ListViewItem for displaying an achievement in the UI.
+        /// </summary>
         private ListViewItem CreateAchievementListViewItem(Stats.AchievementInfo info, Stats.AchievementDefinition def, bool light)
         {
             ListViewItem item = new()

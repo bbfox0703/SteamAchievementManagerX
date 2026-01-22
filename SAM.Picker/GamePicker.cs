@@ -694,6 +694,9 @@ namespace SAM.Picker
             e.Result = new LogoInfo(info.Id, null);
         }
 
+        /// <summary>
+        /// Downloads and processes an image from the given URI.
+        /// </summary>
         private (bool success, bool fatalError, Bitmap? bitmap) TryDownloadAndProcessImage(Uri uri, uint appId, Size targetSize)
         {
             try
@@ -717,6 +720,9 @@ namespace SAM.Picker
             }
         }
 
+        /// <summary>
+        /// Validates image data and resizes it to the target size.
+        /// </summary>
         private (bool success, bool fatalError, Bitmap? bitmap) TryProcessImageData(byte[] data, uint appId, Size targetSize)
         {
             using var stream = new MemoryStream(data, false);
@@ -743,6 +749,9 @@ namespace SAM.Picker
             }
         }
 
+        /// <summary>
+        /// Saves a bitmap to the local cache as PNG.
+        /// </summary>
         private void SaveToCache(Bitmap? bitmap, string? cacheFile)
         {
             if (bitmap == null || cacheFile == null || this._UseIconCache == false)
