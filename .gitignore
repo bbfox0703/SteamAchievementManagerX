@@ -12,8 +12,6 @@
 **/Properties/launchSettings.json
 private/
 upload/
-.claude
-Claude.MD
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -391,3 +389,10 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Claude Code
+.claude/
+nul
+
+# Anthropic / Claude Code agents metadata
+.agents/
