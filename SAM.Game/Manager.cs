@@ -34,9 +34,11 @@ using System.Threading;
 using System.Windows.Forms;
 using SAM.WinForms;
 using SAM.API;
+using SAM.API.Constants;
+using SAM.API.Utilities;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
-using static SAM.Game.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using APITypes = SAM.API.Types;
 
@@ -72,28 +74,6 @@ namespace SAM.Game
         private POINT _lastMousePos;
 
         private Color _BorderColor;
-
-        private const int WM_NCHITTEST = 0x0084;
-        private const int WM_PAINT = 0x000F;
-        private const int HTCLIENT = 1;
-        private const int HTCAPTION = 2;
-        private const int HTLEFT = 10;
-        private const int HTRIGHT = 11;
-        private const int HTTOP = 12;
-        private const int HTTOPLEFT = 13;
-        private const int HTTOPRIGHT = 14;
-        private const int HTBOTTOM = 15;
-        private const int HTBOTTOMLEFT = 16;
-        private const int HTBOTTOMRIGHT = 17;
-        private const int WM_SETTINGCHANGE = 0x001A;
-        private const int WM_THEMECHANGED = 0x031A;
-        private const int WM_NCRBUTTONUP = 0x00A5;
-        private const int WM_NCLBUTTONDOWN = 0x00A1;
-        private const int WM_SYSCOMMAND = 0x0112;
-        private const int TPM_LEFTBUTTON = 0x0000;
-        private const int TPM_RIGHTBUTTON = 0x0002;
-        private const int TPM_RETURNCMD = 0x0100;
-
 
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int X, int Y);
@@ -207,7 +187,7 @@ namespace SAM.Game
             {
                 Directory.CreateDirectory(this._IconCacheDirectory);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 useIconCache = false;
             }
@@ -295,16 +275,7 @@ namespace SAM.Game
 
         private bool LoadUserGameStatsSchema()
         {
-            var currentLanguage = "";
-            if (_LanguageComboBox.Text.Length == 0)
-            {
-                currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
-                _LanguageComboBox.Text = currentLanguage;
-            }
-            else
-            {
-                currentLanguage = _LanguageComboBox.Text;
-            }
+            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
 
             var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
 
@@ -446,6 +417,70 @@ namespace SAM.Game
 
             this._IsUpdatingAchievementList = false;
             this.DownloadNextIcon();
+        }
+
+        /// <summary>
+        /// Creates an AchievementInfo from definition and current unlock state.
+        /// </summary>
+        private Stats.AchievementInfo CreateAchievementInfo(Stats.AchievementDefinition def, bool isAchieved, uint unlockTime)
+        {
+            return new Stats.AchievementInfo()
+            {
+                Id = def.Id,
+                IsAchieved = isAchieved,
+                UnlockTime = isAchieved == true && unlockTime > 0
+                    ? DateTimeOffset.FromUnixTimeSeconds(unlockTime).LocalDateTime
+                    : null,
+                IconNormal = string.IsNullOrEmpty(def.IconNormal) ? null : def.IconNormal,
+                IconLocked = string.IsNullOrEmpty(def.IconLocked) ? def.IconNormal : def.IconLocked,
+                Permission = def.Permission,
+                Name = def.Name,
+                Description = def.Description,
+            };
+        }
+
+        /// <summary>
+        /// Creates a ListViewItem for displaying an achievement in the UI.
+        /// </summary>
+        private ListViewItem CreateAchievementListViewItem(Stats.AchievementInfo info, Stats.AchievementDefinition def, bool light)
+        {
+            ListViewItem item = new()
+            {
+                Checked = info.IsAchieved,
+                Tag = info,
+                Text = info.Name,
+                BackColor = (def.Permission & 3) == 0
+                    ? this.BackColor
+                    : (light
+                        ? ControlPaint.Light(this.BackColor)
+                        : ControlPaint.Dark(this.BackColor)),
+                ForeColor = this.ForeColor,
+            };
+
+            if (item.Text.StartsWith("#", StringComparison.InvariantCulture) == true)
+            {
+                item.Text = info.Id;
+                item.SubItems.Add("");
+            }
+            else
+            {
+                item.SubItems.Add(info.Description);
+            }
+
+            item.SubItems.Add(info.UnlockTime.HasValue == true
+                ? info.UnlockTime.Value.ToString()
+                : "");
+
+            item.SubItems.Add(info.Id);
+            item.SubItems.Add("-1");
+
+            foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+            {
+                subItem.BackColor = item.BackColor;
+                subItem.ForeColor = item.ForeColor;
+            }
+
+            return item;
         }
 
         private void GetStatistics()
@@ -1054,10 +1089,10 @@ namespace SAM.Game
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_NCHITTEST)
+            if (m.Msg == WindowMessages.WM_NCHITTEST)
             {
                 base.WndProc(ref m);
-                if ((int)m.Result == HTCLIENT)
+                if ((int)m.Result == HitTestResults.HTCLIENT)
                 {
                     int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                     int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -1068,26 +1103,26 @@ namespace SAM.Game
                     bool right = pt.X >= this.ClientSize.Width - grip;
                     bool bottom = pt.Y >= this.ClientSize.Height - grip;
 
-                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
-                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
-                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
-                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
-                    else if (top) m.Result = (IntPtr)HTTOP;
-                    else if (left) m.Result = (IntPtr)HTLEFT;
-                    else if (right) m.Result = (IntPtr)HTRIGHT;
-                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    if (top && left) m.Result = (IntPtr)HitTestResults.HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HitTestResults.HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HitTestResults.HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HitTestResults.HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HitTestResults.HTTOP;
+                    else if (left) m.Result = (IntPtr)HitTestResults.HTLEFT;
+                    else if (right) m.Result = (IntPtr)HitTestResults.HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HitTestResults.HTBOTTOM;
                     else
                     {
                         Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
-                            m.Result = (IntPtr)HTCAPTION;
+                            m.Result = (IntPtr)HitTestResults.HTCAPTION;
                         }
                     }
                 }
                 return;
             }
-            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            else if (m.Msg == WindowMessages.WM_NCRBUTTONUP && m.WParam == (IntPtr)HitTestResults.HTCAPTION)
             {
                 int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                 int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -1097,13 +1132,13 @@ namespace SAM.Game
 
             base.WndProc(ref m);
 
-            if (m.Msg == WM_PAINT)
+            if (m.Msg == WindowMessages.WM_PAINT)
             {
                 using var g = Graphics.FromHwnd(this.Handle);
                 using var pen = new Pen(this._BorderColor);
                 g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
             }
-            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
                 WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
@@ -1120,7 +1155,7 @@ namespace SAM.Game
                     return;
                 }
                 ReleaseCapture();
-                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_NCLBUTTONDOWN, (IntPtr)HitTestResults.HTCAPTION, IntPtr.Zero);
             }
             else if (e.Button == MouseButtons.Right)
             {
@@ -1132,10 +1167,10 @@ namespace SAM.Game
         private void ShowSystemMenu(Point screenPoint)
         {
             IntPtr hMenu = GetSystemMenu(this.Handle, false);
-            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            int command = TrackPopupMenuEx(hMenu, TrackPopupMenuFlags.TPM_RIGHTBUTTON | TrackPopupMenuFlags.TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
             if (command != 0)
             {
-                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
             }
         }
 
@@ -1143,7 +1178,6 @@ namespace SAM.Game
         {
             this.Close();
         }
-
 
         private void UpdateColors()
         {

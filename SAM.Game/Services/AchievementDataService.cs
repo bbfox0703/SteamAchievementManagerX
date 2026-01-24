@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SAM.Game.Stats;
-using static SAM.Game.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 
 namespace SAM.Game.Services
 {

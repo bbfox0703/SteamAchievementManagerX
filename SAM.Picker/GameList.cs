@@ -5,19 +5,16 @@ using System.IO;
 using System.Net.Http;
 using System.Xml;
 using System.Xml.Linq;
+using SAM.API;
+using SAM.API.Constants;
+using SAM.API.Utilities;
 
 namespace SAM.Picker
 {
     internal static class GameList
     {
-        // Maximum allowed size for the games.xml download.
-        internal const int MaxDownloadBytes = 4 * 1024 * 1024; // 4 MB
-
         // Cache expiration time in minutes
         private const int CacheExpirationMinutes = 30;
-
-        // Buffer size for stream reading
-        private const int StreamReadBufferSize = 81920; // 80 KB
 
         public static byte[] Load(string baseDirectory, HttpClient httpClient, out bool usedLocal)
         {
@@ -53,13 +50,13 @@ namespace SAM.Picker
                     response.EnsureSuccessStatusCode();
 
                     var contentLength = response.Content.Headers.ContentLength;
-                    if (contentLength == null || contentLength.Value > MaxDownloadBytes)
+                    if (contentLength == null || contentLength.Value > DownloadLimits.MaxGameListBytes)
                     {
                         throw new HttpRequestException("Response too large or missing length");
                     }
 
                     using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                    return ReadWithLimit(stream, MaxDownloadBytes);
+                    return StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxGameListBytes);
                 }).GetAwaiter().GetResult();
 
                 if (bytes != null)
@@ -82,8 +79,9 @@ namespace SAM.Picker
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogWarning($"Failed to download game list from network: {ex.Message}");
                 bytes = null;
             }
 
@@ -127,24 +125,6 @@ namespace SAM.Picker
             }
 
             return bytes;
-        }
-
-        private static byte[] ReadWithLimit(Stream stream, int maxBytes)
-        {
-            using MemoryStream memory = new();
-            byte[] buffer = new byte[StreamReadBufferSize];
-            int read;
-            int total = 0;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw new HttpRequestException("Response exceeded maximum allowed size");
-                }
-                memory.Write(buffer, 0, read);
-            }
-            return memory.ToArray();
         }
     }
 }

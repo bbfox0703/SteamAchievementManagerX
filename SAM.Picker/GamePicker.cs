@@ -39,9 +39,11 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
 using SAM.API;
+using SAM.API.Constants;
+using SAM.API.Utilities;
 using SAM.WinForms;
 using Microsoft.Win32;
-using static SAM.Picker.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
 namespace SAM.Picker
@@ -61,28 +63,6 @@ namespace SAM.Picker
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
         private Color _BorderColor;
-
-        private const int WM_NCHITTEST = 0x0084;
-        private const int WM_PAINT = 0x000F;
-        private const int HTCLIENT = 1;
-        private const int HTCAPTION = 2;
-        private const int HTLEFT = 10;
-        private const int HTRIGHT = 11;
-        private const int HTTOP = 12;
-        private const int HTTOPLEFT = 13;
-        private const int HTTOPRIGHT = 14;
-        private const int HTBOTTOM = 15;
-        private const int HTBOTTOMLEFT = 16;
-        private const int HTBOTTOMRIGHT = 17;
-        private const int WM_SETTINGCHANGE = 0x001A;
-        private const int WM_THEMECHANGED = 0x031A;
-        private const int WM_NCRBUTTONUP = 0x00A5;
-        private const int WM_NCLBUTTONDOWN = 0x00A1;
-        private const int WM_SYSCOMMAND = 0x0112;
-        private const int TPM_LEFTBUTTON = 0x0000;
-        private const int TPM_RIGHTBUTTON = 0x0002;
-        private const int TPM_RETURNCMD = 0x0100;
-
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
@@ -125,7 +105,7 @@ namespace SAM.Picker
             {
                 Directory.CreateDirectory(iconCacheDirectory);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 useIconCache = false;
             }
@@ -189,10 +169,10 @@ namespace SAM.Picker
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_NCHITTEST)
+            if (m.Msg == WindowMessages.WM_NCHITTEST)
             {
                 base.WndProc(ref m);
-                if ((int)m.Result == HTCLIENT)
+                if ((int)m.Result == HitTestResults.HTCLIENT)
                 {
                     int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                     int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -203,26 +183,26 @@ namespace SAM.Picker
                     bool right = pt.X >= this.ClientSize.Width - grip;
                     bool bottom = pt.Y >= this.ClientSize.Height - grip;
 
-                    if (top && left) m.Result = (IntPtr)HTTOPLEFT;
-                    else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
-                    else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
-                    else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
-                    else if (top) m.Result = (IntPtr)HTTOP;
-                    else if (left) m.Result = (IntPtr)HTLEFT;
-                    else if (right) m.Result = (IntPtr)HTRIGHT;
-                    else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+                    if (top && left) m.Result = (IntPtr)HitTestResults.HTTOPLEFT;
+                    else if (top && right) m.Result = (IntPtr)HitTestResults.HTTOPRIGHT;
+                    else if (bottom && left) m.Result = (IntPtr)HitTestResults.HTBOTTOMLEFT;
+                    else if (bottom && right) m.Result = (IntPtr)HitTestResults.HTBOTTOMRIGHT;
+                    else if (top) m.Result = (IntPtr)HitTestResults.HTTOP;
+                    else if (left) m.Result = (IntPtr)HitTestResults.HTLEFT;
+                    else if (right) m.Result = (IntPtr)HitTestResults.HTRIGHT;
+                    else if (bottom) m.Result = (IntPtr)HitTestResults.HTBOTTOM;
                     else
                     {
                         Control? child = this.GetChildAtPoint(pt);
                         if (child == null)
                         {
-                            m.Result = (IntPtr)HTCAPTION;
+                            m.Result = (IntPtr)HitTestResults.HTCAPTION;
                         }
                     }
                 }
                 return;
             }
-            else if (m.Msg == WM_NCRBUTTONUP && m.WParam == (IntPtr)HTCAPTION)
+            else if (m.Msg == WindowMessages.WM_NCRBUTTONUP && m.WParam == (IntPtr)HitTestResults.HTCAPTION)
             {
                 int x = (short)(m.LParam.ToInt32() & 0xFFFF);
                 int y = (short)((m.LParam.ToInt32() >> 16) & 0xFFFF);
@@ -232,13 +212,13 @@ namespace SAM.Picker
 
             base.WndProc(ref m);
 
-            if (m.Msg == WM_PAINT)
+            if (m.Msg == WindowMessages.WM_PAINT)
             {
                 using var g = Graphics.FromHwnd(this.Handle);
                 using var pen = new Pen(this._BorderColor);
                 g.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
             }
-            else if (m.Msg == WM_SETTINGCHANGE || m.Msg == WM_THEMECHANGED)
+            else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
                 WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
@@ -254,7 +234,7 @@ namespace SAM.Picker
                     return;
                 }
                 ReleaseCapture();
-                SendMessage(this.Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_NCLBUTTONDOWN, (IntPtr)HitTestResults.HTCAPTION, IntPtr.Zero);
             }
             else if (e.Button == MouseButtons.Right)
             {
@@ -266,10 +246,10 @@ namespace SAM.Picker
         private void ShowSystemMenu(Point screenPoint)
         {
             IntPtr hMenu = GetSystemMenu(this.Handle, false);
-            int command = TrackPopupMenuEx(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
+            int command = TrackPopupMenuEx(hMenu, TrackPopupMenuFlags.TPM_RIGHTBUTTON | TrackPopupMenuFlags.TPM_RETURNCMD, screenPoint.X, screenPoint.Y, this.Handle, IntPtr.Zero);
             if (command != 0)
             {
-                SendMessage(this.Handle, WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
+                SendMessage(this.Handle, WindowMessages.WM_SYSCOMMAND, (IntPtr)command, IntPtr.Zero);
             }
         }
 
@@ -277,8 +257,6 @@ namespace SAM.Picker
         {
             this.Close();
         }
-
-
 
         private void UpdateColors()
         {
@@ -319,9 +297,6 @@ namespace SAM.Picker
             this.DownloadNextLogo();
         }
 
-        private const int MaxLogoBytes = 4 * 1024 * 1024; // 4 MB
-        private const int MaxLogoDimension = 1024; // px
-
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
             HttpResponseMessage response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
@@ -343,7 +318,7 @@ namespace SAM.Picker
                 {
                     DebugLogger.Log(_($"Missing Content-Length header for {response.RequestMessage!.RequestUri}"));
                 }
-                else if (contentLength.Value > MaxLogoBytes)
+                else if (contentLength.Value > DownloadLimits.MaxGameLogoBytes)
                 {
                     throw new HttpRequestException("Response too large");
                 }
@@ -351,11 +326,10 @@ namespace SAM.Picker
                 var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
                 using var stream = await response.Content.ReadAsStreamAsync();
-                var data = WinForms.ImageValidator.ReadStreamWithLimit(stream, MaxLogoBytes);
+                var data = StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxGameLogoBytes);
                 return (data, contentType);
             }
         }
-
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
@@ -491,6 +465,12 @@ namespace SAM.Picker
                     this._GameListView.Items[0].Selected = true;
                     this._GameListView.Select();
                 }
+
+                // Queue all games for logo download
+                foreach (var game in filteredList)
+                {
+                    this.AddGameToLogoQueue(game);
+                }
             }
             finally
             {
@@ -533,14 +513,65 @@ namespace SAM.Picker
             e.Result = new LogoInfo(info.Id, logo);
         }
 
+        /// <summary>
+        /// Downloads and processes an image from the given URI.
+        /// </summary>
+        private (bool success, bool fatalError, Bitmap? bitmap) TryDownloadAndProcessImage(Uri uri, uint appId, Size targetSize)
+        {
+            try
+            {
+                var (data, contentType) = System.Threading.Tasks.Task.Run(async () =>
+                    await this.DownloadDataAsync(uri).ConfigureAwait(false)
+                ).GetAwaiter().GetResult();
+
+                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    DebugLogger.Log(_($"Invalid content type for app {appId}: {contentType}"));
+                    return (false, false, null);
+                }
+
+                return TryProcessImageData(data, appId, targetSize);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(_($"Failed to download image for app {appId} from {uri}: {ex}"));
+                return (false, false, null);
+            }
+        }
+
+        /// <summary>
+        /// Validates image data and resizes it to the target size.
+        /// </summary>
+        private (bool success, bool fatalError, Bitmap? bitmap) TryProcessImageData(byte[] data, uint appId, Size targetSize)
+        {
+            using var stream = new MemoryStream(data, false);
+            try
+            {
+                using var image = Image.FromStream(stream, useEmbeddedColorManagement: false, validateImageData: true);
+
+                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
+                {
+                    DebugLogger.Log(_($"Image dimensions too large for app {appId}: {image.Width}x{image.Height}"));
+                    return (false, false, null);
+                }
+
+                var bitmap = image.ResizeToFit(targetSize);
+                return (true, false, bitmap);
+            }
+            catch (ArgumentException)
+            {
+                return (false, true, null);
+            }
+            catch (OutOfMemoryException)
+            {
+                return (false, true, null);
+            }
+        }
+
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (e.Error != null || e.Cancelled == true)
-            {
-                return;
-            }
-
-            if (e.Result is LogoInfo logoInfo &&
+            if (e.Error == null && e.Cancelled == false &&
+                e.Result is LogoInfo logoInfo &&
                 logoInfo.Bitmap != null &&
                 this._Games.TryGetValue(logoInfo.Id, out var gameInfo) == true)
             {
@@ -551,6 +582,7 @@ namespace SAM.Picker
                 this._GameListView.EndUpdate();
             }
 
+            // Always continue to next download, even on error
             this.DownloadNextLogo();
         }
 
@@ -561,160 +593,24 @@ namespace SAM.Picker
                 return;
             }
 
-            GameInfo? info;
-            while (true)
+            var info = this._logoDownloader.DequeueLogo();
+            if (info == null)
             {
-                info = this._logoDownloader.DequeueLogo();
-                if (info == null)
-                {
-                    this._DownloadStatusLabel.Visible = false;
-                    return;
-                }
-
-                if (info.Item == null)
-                {
-                    continue;
-                }
-
-                if (this._FilteredGames.Contains(info) == false ||
-                    info.Item.Bounds.IntersectsWith(this._GameListView.ClientRectangle) == false)
-                {
-                    continue;
-                }
-
-                break;
+                this._DownloadStatusLabel.Visible = false;
+                return;
             }
 
             this._DownloadStatusLabel.Text = $"Downloading {1 + this._logoDownloader.QueueCount} game icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            this._LogoWorker.RunWorkerAsync(info!);
-        }
-
-        private static bool TrySanitizeCandidate(string candidate, out string sanitized)
-        {
-            sanitized = Path.GetFileName(candidate);
-
-            if (candidate.IndexOf("..", StringComparison.Ordinal) >= 0 ||
-                candidate.IndexOf(':') >= 0)
-            {
-                return false;
-            }
-
-            if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Scheme) == false)
-            {
-                return false;
-            }
-
-            return true;
+            this._LogoWorker.RunWorkerAsync(info);
         }
 
         private string GetGameImageUrl(uint id)
         {
-            string candidate;
-
-            var currentLanguage = "";
-
-            if (_LanguageComboBox.Text.Length == 0)
-            {
-                currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
-                _LanguageComboBox.Text = currentLanguage;
-            }
-            else
-            {
-                currentLanguage = _LanguageComboBox.Text;
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
-
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid small_capsule path for app {id} language {currentLanguage}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing small_capsule for app {id} language {currentLanguage}"));
-            }
-
-            if (currentLanguage != "english")
-            {
-                candidate = this._SteamClient.SteamApps001.GetAppData(id, "small_capsule/english");
-                if (string.IsNullOrEmpty(candidate) == false)
-                {
-                    if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                    {
-                        return _($"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{id}/{safeCandidate}");
-                    }
-                    else
-                    {
-                        DebugLogger.Log(_($"Invalid small_capsule path for app {id} language english: {candidate}"));
-                    }
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Missing small_capsule for app {id} language english"));
-                }
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "logo");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://cdn.steamstatic.com/steamcommunity/public/images/apps/{id}/{safeCandidate}.jpg");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid logo path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing logo for app {id}"));
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "library_600x900");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid library_600x900 path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing library_600x900 for app {id}"));
-            }
-
-            candidate = this._SteamClient.SteamApps001.GetAppData(id, "header_image");
-            if (string.IsNullOrEmpty(candidate) == false)
-            {
-                if (TrySanitizeCandidate(candidate, out var safeCandidate))
-                {
-                    return _($"https://shared.cloudflare.steamstatic.com/steam/apps/{id}/{safeCandidate}");
-                }
-                else
-                {
-                    DebugLogger.Log(_($"Invalid header_image path for app {id}: {candidate}"));
-                }
-            }
-            else
-            {
-                DebugLogger.Log(_($"Missing header_image for app {id}"));
-            }
-            return _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
-
+            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
+            var url = GameImageUrlResolver.GetGameImageUrl(this._SteamClient.SteamApps001.GetAppData, id, currentLanguage);
+            return url ?? _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{id}/header.jpg");
         }
 
         private void AddGameToLogoQueue(GameInfo info)
@@ -736,11 +632,20 @@ namespace SAM.Picker
             if (imageIndex >= 0)
             {
                 info.ImageIndex = imageIndex;
+                return;
             }
-            else
+
+            // Try loading from cache first (faster than queueing)
+            if (this._logoDownloader.TryLoadFromCache(info.Id, this._LogoImageList.ImageSize, out var cachedLogo) && cachedLogo != null)
             {
-                this._logoDownloader.QueueLogo(info, imageUrl);
+                imageIndex = this._LogoImageList.Images.Count;
+                this._LogoImageList.Images.Add(imageUrl, cachedLogo);
+                info.ImageIndex = imageIndex;
+                return;
             }
+
+            // Cache miss - queue for download
+            this._logoDownloader.QueueLogo(info, imageUrl);
         }
 
         private bool OwnsGame(uint id)

@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SAM.API;
 
 namespace SAM.Game
 {
@@ -215,8 +216,9 @@ namespace SAM.Game
                     return kv;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogError($"Failed to load VDF binary file '{path}'", ex);
                 return null;
             }
         }
@@ -313,8 +315,9 @@ namespace SAM.Game
                 this.Valid = true;
                 return input.Position == input.Length;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                DebugLogger.LogError("Failed to parse VDF binary stream", ex);
                 return false;
             }
         }

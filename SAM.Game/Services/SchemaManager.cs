@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using SAM.Game.Stats;
 using APITypes = SAM.API.Types;
-using static SAM.Game.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 
 namespace SAM.Game.Services
 {

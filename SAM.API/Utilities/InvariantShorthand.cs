@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -22,10 +22,18 @@
 
 using System;
 
-namespace SAM.Picker
+namespace SAM.API.Utilities
 {
-    internal static class InvariantShorthand
+    /// <summary>
+    /// Provides shorthand for invariant culture string formatting.
+    /// </summary>
+    public static class InvariantShorthand
     {
+        /// <summary>
+        /// Formats a string using invariant culture.
+        /// </summary>
+        /// <param name="formattable">The formattable string.</param>
+        /// <returns>The formatted string using invariant culture.</returns>
         public static string _(FormattableString formattable)
         {
             return FormattableString.Invariant(formattable);

@@ -7,7 +7,7 @@ using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 using SAM.WinForms;
-using static SAM.Picker.InvariantShorthand;
+using static SAM.API.Utilities.InvariantShorthand;
 
 namespace SAM.Picker.Services
 {
