@@ -564,12 +564,8 @@ namespace SAM.Picker
 
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (e.Error != null || e.Cancelled == true)
-            {
-                return;
-            }
-
-            if (e.Result is LogoInfo logoInfo &&
+            if (e.Error == null && e.Cancelled == false &&
+                e.Result is LogoInfo logoInfo &&
                 logoInfo.Bitmap != null &&
                 this._Games.TryGetValue(logoInfo.Id, out var gameInfo) == true)
             {
@@ -580,6 +576,7 @@ namespace SAM.Picker
                 this._GameListView.EndUpdate();
             }
 
+            // Always continue to next download, even on error
             this.DownloadNextLogo();
         }
 
