@@ -465,6 +465,12 @@ namespace SAM.Picker
                     this._GameListView.Items[0].Selected = true;
                     this._GameListView.Select();
                 }
+
+                // Queue all games for logo download
+                foreach (var game in filteredList)
+                {
+                    this.AddGameToLogoQueue(game);
+                }
             }
             finally
             {
@@ -587,34 +593,17 @@ namespace SAM.Picker
                 return;
             }
 
-            GameInfo? info;
-            while (true)
+            var info = this._logoDownloader.DequeueLogo();
+            if (info == null)
             {
-                info = this._logoDownloader.DequeueLogo();
-                if (info == null)
-                {
-                    this._DownloadStatusLabel.Visible = false;
-                    return;
-                }
-
-                if (info.Item == null)
-                {
-                    continue;
-                }
-
-                if (this._FilteredGames.Contains(info) == false ||
-                    info.Item.Bounds.IntersectsWith(this._GameListView.ClientRectangle) == false)
-                {
-                    continue;
-                }
-
-                break;
+                this._DownloadStatusLabel.Visible = false;
+                return;
             }
 
             this._DownloadStatusLabel.Text = $"Downloading {1 + this._logoDownloader.QueueCount} game icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            this._LogoWorker.RunWorkerAsync(info!);
+            this._LogoWorker.RunWorkerAsync(info);
         }
 
         private string GetGameImageUrl(uint id)
