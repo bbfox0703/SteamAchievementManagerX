@@ -632,11 +632,20 @@ namespace SAM.Picker
             if (imageIndex >= 0)
             {
                 info.ImageIndex = imageIndex;
+                return;
             }
-            else
+
+            // Try loading from cache first (faster than queueing)
+            if (this._logoDownloader.TryLoadFromCache(info.Id, this._LogoImageList.ImageSize, out var cachedLogo) && cachedLogo != null)
             {
-                this._logoDownloader.QueueLogo(info, imageUrl);
+                imageIndex = this._LogoImageList.Images.Count;
+                this._LogoImageList.Images.Add(imageUrl, cachedLogo);
+                info.ImageIndex = imageIndex;
+                return;
             }
+
+            // Cache miss - queue for download
+            this._logoDownloader.QueueLogo(info, imageUrl);
         }
 
         private bool OwnsGame(uint id)
