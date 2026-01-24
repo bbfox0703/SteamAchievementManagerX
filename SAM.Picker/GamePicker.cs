@@ -57,26 +57,12 @@ namespace SAM.Picker
 
         private readonly object _GamesLock;
         private readonly object _FilteredGamesLock;
-        private readonly object _LogoLock;
-        private readonly HashSet<string> _LogosAttempting;
-        private readonly HashSet<string> _LogosAttempted;
-        private readonly ConcurrentQueue<GameInfo> _LogoQueue;
-
-        private readonly string _IconCacheDirectory;
-        private bool _UseIconCache;
+        private readonly Services.GameLogoDownloader _logoDownloader;
+        private readonly Presenters.GameListViewAdapter _gameListAdapter;
 
         private readonly API.Callbacks.AppDataChanged _AppDataChangedCallback;
 
         private Color _BorderColor;
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
@@ -112,22 +98,20 @@ namespace SAM.Picker
             this._FilteredGames = new();
             this._GamesLock = new();
             this._FilteredGamesLock = new();
-            this._LogoLock = new();
-            this._LogosAttempting = new();
-            this._LogosAttempted = new();
-            this._LogoQueue = new();
 
-            this._IconCacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appcache");
+            string iconCacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appcache");
+            bool useIconCache = true;
             try
             {
-                Directory.CreateDirectory(this._IconCacheDirectory);
-                this._UseIconCache = true;
+                Directory.CreateDirectory(iconCacheDirectory);
             }
             catch (Exception ex)
             {
-                DebugLogger.LogWarning($"Failed to create icon cache directory '{this._IconCacheDirectory}': {ex.Message}");
-                this._UseIconCache = false;
+                useIconCache = false;
             }
+
+            this._logoDownloader = new Services.GameLogoDownloader(iconCacheDirectory, useIconCache);
+            this._gameListAdapter = new Presenters.GameListViewAdapter(this._FilteredGames, this._FilteredGamesLock);
 
             this.InitializeComponent();
             this.FormBorderStyle = FormBorderStyle.None;
@@ -161,14 +145,14 @@ namespace SAM.Picker
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            this.TryApplyMica();
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
@@ -178,7 +162,7 @@ namespace SAM.Picker
                 this.BeginInvoke(new MethodInvoker(() =>
                 {
                     this.UpdateColors();
-                    this.TryApplyMica();
+                    WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
                 }));
             }
         }
@@ -237,7 +221,7 @@ namespace SAM.Picker
             else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
-                this.TryApplyMica();
+                WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             }
         }
 
@@ -274,54 +258,9 @@ namespace SAM.Picker
             this.Close();
         }
 
-        private void TryApplyMica()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
-            {
-                return;
-            }
-
-            int backdrop = DwmAttributes.DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
-
-            int dark = this.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
-        }
-
-        private void ApplyRoundedCorners()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
-            {
-                int pref = DwmAttributes.DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
-            }
-            else
-            {
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
-                this.Region = Region.FromHrgn(rgn);
-                DeleteObject(rgn);
-            }
-        }
-
-        private bool IsLightTheme()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                if (key?.GetValue("AppsUseLightTheme") is int i)
-                {
-                    return i != 0;
-                }
-            }
-            catch
-            {
-            }
-            return true;
-        }
-
         private void UpdateColors()
         {
-            bool light = this.IsLightTheme();
+            bool light = WinForms.WindowsThemeDetector.IsLightTheme();
             if (light)
             {
                 this._BorderColor = Color.FromArgb(200, 200, 200);
@@ -498,31 +437,14 @@ namespace SAM.Picker
                 totalGamesCount = this._Games.Count;
             }
 
-            // Build filtered list from snapshot
-            var filteredList = new List<GameInfo>();
-            foreach (var info in gamesSnapshot)
-            {
-                if (nameSearch != null &&
-                    info.Name.IndexOf(nameSearch, StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    continue;
-                }
-
-                bool wanted = info.Type switch
-                {
-                    "normal" => wantNormals,
-                    "demo" => wantDemos,
-                    "mod" => wantMods,
-                    "junk" => wantJunk,
-                    _ => true,
-                };
-                if (wanted == false)
-                {
-                    continue;
-                }
-
-                filteredList.Add(info);
-            }
+            // Filter games using the service
+            var filteredList = Services.GameListFilter.FilterGames(
+                gamesSnapshot,
+                nameSearch,
+                wantNormals,
+                wantDemos,
+                wantMods,
+                wantJunk);
 
             // Update UI while preventing ListView paint events
             this._GameListView.BeginUpdate();
@@ -552,79 +474,12 @@ namespace SAM.Picker
 
         private void OnGameListViewRetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            lock (this._FilteredGamesLock)
-            {
-                // Bounds check to prevent race condition
-                if (e.ItemIndex < 0 || e.ItemIndex >= this._FilteredGames.Count)
-                {
-                    e.Item = new ListViewItem("Loading...");
-                    return;
-                }
-
-                var info = this._FilteredGames[e.ItemIndex];
-                e.Item = info.Item = new()
-                {
-                    Text = info.Name,
-                    ImageIndex = info.ImageIndex,
-                };
-            }
+            this._gameListAdapter.OnRetrieveVirtualItem(sender, e);
         }
 
         private void OnGameListViewSearchForVirtualItem(object sender, SearchForVirtualItemEventArgs e)
         {
-            if (e.Direction != SearchDirectionHint.Down || e.IsTextSearch == false)
-            {
-                return;
-            }
-
-            lock (this._FilteredGamesLock)
-            {
-                var count = this._FilteredGames.Count;
-                if (count < 2)
-                {
-                    return;
-                }
-
-                var text = e.Text ?? string.Empty;
-                if (string.IsNullOrEmpty(text))
-                {
-                    return;
-                }
-
-                int startIndex = e.StartIndex;
-
-                Predicate<GameInfo> predicate;
-                /*if (e.IsPrefixSearch == true)*/
-                {
-                    predicate = gi => gi.Name != null && gi.Name.StartsWith(text, StringComparison.CurrentCultureIgnoreCase);
-                }
-                /*else
-                {
-                    predicate = gi => gi.Name != null && string.Compare(gi.Name, text, StringComparison.CurrentCultureIgnoreCase) == 0;
-                }*/
-
-                int index;
-                if (e.StartIndex >= count)
-                {
-                    // starting from the last item in the list
-                    index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
-                }
-                else if (startIndex <= 0)
-                {
-                    // starting from the first item in the list
-                    index = this._FilteredGames.FindIndex(0, count, predicate);
-                }
-                else
-                {
-                    index = this._FilteredGames.FindIndex(startIndex, count - startIndex, predicate);
-                    if (index < 0)
-                    {
-                        index = this._FilteredGames.FindIndex(0, startIndex - 1, predicate);
-                    }
-                }
-
-                e.Index = index < 0 ? -1 : index;
-            }
+            this._gameListAdapter.OnSearchForVirtualItem(sender, e);
         }
 
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
@@ -636,63 +491,20 @@ namespace SAM.Picker
                 return;
             }
 
-            List<string> urls = new() { info.ImageUrl };
-            var fallbackUrl = _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{info.Id}/header.jpg");
-            if (urls.Contains(fallbackUrl) == false)
+            // Try loading from cache first
+            if (this._logoDownloader.TryLoadFromCache(info.Id, this._LogoImageList.ImageSize, out var cachedLogo))
             {
-                urls.Add(fallbackUrl);
+                e.Result = new LogoInfo(info.Id, cachedLogo);
+                return;
             }
 
-            string? cacheFile = null;
-            if (this._UseIconCache == true)
-            {
-                cacheFile = Path.Combine(this._IconCacheDirectory, info.Id + ".png");
-                using var cacheResult = ImageCacheHelper.TryLoadFromCache(cacheFile, DownloadLimits.MaxGameLogoBytes);
-                if (cacheResult.DisableCache)
-                {
-                    this._UseIconCache = false;
-                }
-                else if (cacheResult.Success && cacheResult.Image != null)
-                {
-                    Bitmap bitmap = cacheResult.Image.ResizeToFit(this._LogoImageList.ImageSize);
-                    e.Result = new LogoInfo(info.Id, bitmap);
-                    return;
-                }
-            }
+            // Download logo using the service
+            Bitmap? logo = System.Threading.Tasks.Task.Run(async () =>
+                await this._logoDownloader.DownloadLogoAsync(info, this._LogoImageList.ImageSize, WinForms.HttpClientManager.Client)
+                    .ConfigureAwait(false)
+            ).GetAwaiter().GetResult();
 
-            foreach (var url in urls)
-            {
-                this._LogosAttempted.Add(url);
-
-                if (ImageUrlValidator.TryCreateUri(url, out var uri) == false)
-                {
-                    DebugLogger.Log(_($"Invalid image URL for app {info.Id}: {url}"));
-                    continue;
-                }
-
-                if (uri == null)
-                {
-                    continue;
-                }
-
-                Uri nonNullUri = uri;
-
-                var result = TryDownloadAndProcessImage(nonNullUri, info.Id, this._LogoImageList.ImageSize);
-                if (result.success)
-                {
-                    e.Result = new LogoInfo(info.Id, result.bitmap);
-                    info.ImageUrl = url;
-                    SaveToCache(result.bitmap, cacheFile);
-                    return;
-                }
-                if (result.fatalError)
-                {
-                    e.Result = new LogoInfo(info.Id, null);
-                    return;
-                }
-            }
-
-            e.Result = new LogoInfo(info.Id, null);
+            e.Result = new LogoInfo(info.Id, logo);
         }
 
         /// <summary>
@@ -750,28 +562,6 @@ namespace SAM.Picker
             }
         }
 
-        /// <summary>
-        /// Saves a bitmap to the local cache as PNG.
-        /// </summary>
-        private void SaveToCache(Bitmap? bitmap, string? cacheFile)
-        {
-            if (bitmap == null || cacheFile == null || this._UseIconCache == false)
-            {
-                return;
-            }
-
-            try
-            {
-                var cacheData = bitmap.ToPngBytes();
-                File.WriteAllBytes(cacheFile, cacheData);
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogWarning($"Failed to save logo to cache '{cacheFile}': {ex.Message}");
-                this._UseIconCache = false;
-            }
-        }
-
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
         {
             if (e.Error != null || e.Cancelled == true)
@@ -795,48 +585,39 @@ namespace SAM.Picker
 
         private void DownloadNextLogo()
         {
-            lock (this._LogoLock)
+            if (this._LogoWorker.IsBusy == true)
             {
+                return;
+            }
 
-                if (this._LogoWorker.IsBusy == true)
+            GameInfo? info;
+            while (true)
+            {
+                info = this._logoDownloader.DequeueLogo();
+                if (info == null)
                 {
+                    this._DownloadStatusLabel.Visible = false;
                     return;
                 }
 
-                GameInfo? info;
-                while (true)
+                if (info.Item == null)
                 {
-                    if (this._LogoQueue.TryDequeue(out info) == false)
-                    {
-                        this._DownloadStatusLabel.Visible = false;
-                        return;
-                    }
-
-                    if (info == null)
-                    {
-                        continue;
-                    }
-
-                    if (info.Item == null)
-                    {
-                        continue;
-                    }
-
-                    if (this._FilteredGames.Contains(info) == false ||
-                        info.Item.Bounds.IntersectsWith(this._GameListView.ClientRectangle) == false)
-                    {
-                        this._LogosAttempting.Remove(info.ImageUrl);
-                        continue;
-                    }
-
-                    break;
+                    continue;
                 }
 
-                this._DownloadStatusLabel.Text = $"Downloading {1 + this._LogoQueue.Count} game icons...";
-                this._DownloadStatusLabel.Visible = true;
+                if (this._FilteredGames.Contains(info) == false ||
+                    info.Item.Bounds.IntersectsWith(this._GameListView.ClientRectangle) == false)
+                {
+                    continue;
+                }
 
-                this._LogoWorker.RunWorkerAsync(info!);
+                break;
             }
+
+            this._DownloadStatusLabel.Text = $"Downloading {1 + this._logoDownloader.QueueCount} game icons...";
+            this._DownloadStatusLabel.Visible = true;
+
+            this._LogoWorker.RunWorkerAsync(info!);
         }
 
         private string GetGameImageUrl(uint id)
@@ -866,12 +647,9 @@ namespace SAM.Picker
             {
                 info.ImageIndex = imageIndex;
             }
-            else if (
-                this._LogosAttempting.Contains(imageUrl) == false &&
-                this._LogosAttempted.Contains(imageUrl) == false)
+            else
             {
-                this._LogosAttempting.Add(imageUrl);
-                this._LogoQueue.Enqueue(info);
+                this._logoDownloader.QueueLogo(info, imageUrl);
             }
         }
 
@@ -1024,23 +802,7 @@ namespace SAM.Picker
                 return;
             }
 
-            string gameExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SAM.Game.exe");
-            if (File.Exists(gameExe) == false)
-            {
-                MessageBox.Show(
-                    this,
-                    "SAM.Game.exe is missing.",
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
-            }
-
-            try
-            {
-                Process.Start(gameExe, info.Id.ToString(CultureInfo.InvariantCulture));
-            }
-            catch (Win32Exception)
+            if (!Services.GameLauncher.LaunchGame(info.Id))
             {
                 MessageBox.Show(
                     this,
@@ -1078,11 +840,8 @@ namespace SAM.Picker
                 return;
             }
 
-            while (this._LogoQueue.TryDequeue(out var logo) == true)
-            {
-                // clear the download queue because we will be showing only one app
-                this._LogosAttempted.Remove(logo.ImageUrl);
-            }
+            // Clear the download queue because we will be showing only one app
+            this._logoDownloader.ClearQueue();
 
             this._AddGameTextBox.Text = "";
             lock (this._GamesLock)

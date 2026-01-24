@@ -51,14 +51,14 @@ namespace SAM.Game
         private readonly API.Client _SteamClient;
 
         private readonly string _IconCacheDirectory;
-        private bool _UseIconCache;
+        private Services.AchievementIconManager _achievementIconManager = null!;
+        private Services.AchievementDataService _achievementDataService = null!;
+        private Services.StatisticsDataService _statisticsDataService = null!;
+        private readonly Services.CountdownTimerManager _countdownTimerManager = new();
 
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
         private const int MouseMoveDelayMs = 12; // Milliseconds between mouse movements
-        private static readonly Regex IconNameRegex = new("^[A-Za-z0-9_-]+\\.(png|jpe?g|gif|bmp)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        private readonly List<Stats.AchievementInfo> _iconQueue = new();
         private readonly List<Stats.StatDefinition> _statDefinitions = new();
 
         private readonly List<Stats.AchievementDefinition> _achievementDefinitions = new();
@@ -69,7 +69,6 @@ namespace SAM.Game
 
         //private API.Callback<APITypes.UserStatsStored> UserStatsStoredCallback;
         // *****************************************************************
-        private Dictionary<string, int> _achievementCounters = new();
 
         private bool _moveRight = true;
         private POINT _lastMousePos;
@@ -104,14 +103,6 @@ namespace SAM.Game
             public int Y;
         }
 
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
@@ -190,16 +181,21 @@ namespace SAM.Game
                 AppDomain.CurrentDomain.BaseDirectory,
                 "appcache",
                 gameId.ToString(CultureInfo.InvariantCulture));
+
+            bool useIconCache = true;
             try
             {
                 Directory.CreateDirectory(this._IconCacheDirectory);
-                this._UseIconCache = true;
             }
             catch (Exception ex)
             {
-                DebugLogger.LogWarning($"Failed to create icon cache directory '{this._IconCacheDirectory}': {ex.Message}");
-                this._UseIconCache = false;
+                useIconCache = false;
             }
+
+            this._achievementIconManager = new Services.AchievementIconManager(
+                gameId,
+                this._IconCacheDirectory,
+                useIconCache);
 
             string name = this._SteamClient.SteamApps001.GetAppData((uint)this._GameId, "name");
             if (name != null)
@@ -222,36 +218,6 @@ namespace SAM.Game
             this.UpdateColors();
         }
 
-        private string? GetAchievementCachePath(Stats.AchievementInfo info)
-        {
-            if (this._UseIconCache == false)
-            {
-                return null;
-            }
-
-            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
-            if (string.IsNullOrEmpty(icon))
-            {
-                return null;
-            }
-
-            var id = info.Id;
-            var invalid = Path.GetInvalidFileNameChars();
-            if (id.IndexOfAny(invalid) >= 0 ||
-                id.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
-                id.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
-            {
-                var originalId = id;
-                id = Uri.EscapeDataString(id);
-                DebugLogger.Log($"Renaming icon id '{originalId}' to '{id}' for cache file name.");
-            }
-
-            var fileName = id + "_" + (info.IsAchieved == true ? "achieved" : "locked") + ".png";
-            var path = Path.Combine(this._IconCacheDirectory, fileName);
-            DebugLogger.Log($"Cache path for icon '{info.Id}' resolved to '{path}'.");
-            return path;
-        }
-
         private void AddAchievementIcon(Stats.AchievementInfo info, Image? icon)
         {
             if (icon == null)
@@ -269,22 +235,26 @@ namespace SAM.Game
 
         private async void DownloadNextIcon()
         {
-            if (this._iconQueue.Count == 0)
+            if (this._achievementIconManager.QueueCount == 0)
             {
                 this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._iconQueue.Count} icons...";
+            this._DownloadStatusLabel.Text = $"Downloading {this._achievementIconManager.QueueCount} icons...";
             this._DownloadStatusLabel.Visible = true;
 
-            var info = this._iconQueue[0];
-            this._iconQueue.RemoveAt(0);
+            var info = this._achievementIconManager.DequeueIcon();
+            if (info == null)
+            {
+                this._DownloadStatusLabel.Visible = false;
+                return;
+            }
 
             Bitmap? bitmap = null;
             try
             {
-                bitmap = await this.DownloadIconAsync(info);
+                bitmap = await this._achievementIconManager.DownloadIconAsync(info);
             }
             catch (Exception ex)
             {
@@ -297,320 +267,39 @@ namespace SAM.Game
             this.DownloadNextIcon();
         }
 
-        private async System.Threading.Tasks.Task<Bitmap?> DownloadIconAsync(Stats.AchievementInfo info)
-        {
-            var iconUri = GetIconUri(info);
-            if (iconUri == null)
-            {
-                return null;
-            }
-
-            DebugLogger.Log($"Downloading icon from '{iconUri}'.");
-            var data = await DownloadIconDataAsync(iconUri);
-            if (data == null)
-            {
-                return null;
-            }
-
-            var bitmap = ProcessIconData(data);
-            if (bitmap != null)
-            {
-                SaveIconToCache(info, data);
-            }
-
-            return bitmap;
-        }
-
-        /// <summary>
-        /// Builds the Steam CDN URI for the achievement icon.
-        /// </summary>
-        private Uri? GetIconUri(Stats.AchievementInfo info)
-        {
-            var icon = info.IsAchieved == true ? info.IconNormal : info.IconLocked;
-            if (string.IsNullOrEmpty(icon))
-            {
-                return null;
-            }
-
-            var fileName = Path.GetFileName(icon);
-            if (string.IsNullOrEmpty(fileName) || fileName != icon || IconNameRegex.IsMatch(fileName) == false)
-            {
-                return null;
-            }
-
-            return new UriBuilder("https", "cdn.steamstatic.com")
-            {
-                Path = $"/steamcommunity/public/images/apps/{this._GameId}/{Uri.EscapeDataString(fileName)}"
-            }.Uri;
-        }
-
-        /// <summary>
-        /// Downloads icon data from the given URI with size and content-type validation.
-        /// </summary>
-        private async System.Threading.Tasks.Task<byte[]?> DownloadIconDataAsync(Uri uri)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using var response = await WinForms.HttpClientManager.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-
-            var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength == null || contentLength.Value > DownloadLimits.MaxAchievementIconBytes)
-            {
-                throw new HttpRequestException("Response too large or missing length");
-            }
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == false)
-            {
-                throw new InvalidDataException("Invalid content type");
-            }
-
-            using var stream = await response.Content.ReadAsStreamAsync();
-            return StreamHelper.ReadWithLimit(stream, DownloadLimits.MaxAchievementIconBytes);
-        }
-
-        /// <summary>
-        /// Validates and converts raw image data to a Bitmap.
-        /// </summary>
-        private static Bitmap? ProcessIconData(byte[] data)
-        {
-            using var imageStream = new MemoryStream(data, false);
-            try
-            {
-                using var image = Image.FromStream(imageStream, useEmbeddedColorManagement: false, validateImageData: true);
-                if (image.Width > DownloadLimits.MaxImageDimension || image.Height > DownloadLimits.MaxImageDimension)
-                {
-                    return null;
-                }
-                return new Bitmap(image);
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-            catch (OutOfMemoryException)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Saves icon data to the local cache directory.
-        /// </summary>
-        private void SaveIconToCache(Stats.AchievementInfo info, byte[] data)
-        {
-            if (this._UseIconCache == false)
-            {
-                return;
-            }
-
-            var cachePath = this.GetAchievementCachePath(info);
-            if (cachePath == null)
-            {
-                return;
-            }
-
-            try
-            {
-                DebugLogger.Log($"Caching icon '{info.Id}' to '{cachePath}'.");
-                File.WriteAllBytes(cachePath, data);
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogWarning($"Failed to cache icon '{info.Id}' to '{cachePath}': {ex.Message}");
-                this._UseIconCache = false;
-            }
-        }
-
-
         private static string TranslateError(int id) => id switch
         {
             2 => "generic error -- this usually means you don't own the game",
             _ => _($"{id}"),
         };
 
-        private static string GetLocalizedString(KeyValue kv, string language, string defaultValue)
-        {
-            var name = kv[language].AsString("");
-            if (string.IsNullOrEmpty(name) == false)
-            {
-                return name;
-            }
-
-            if (language != "english")
-            {
-                name = kv["english"].AsString("");
-                if (string.IsNullOrEmpty(name) == false)
-                {
-                    return name;
-                }
-            }
-
-            name = kv.AsString("");
-            if (string.IsNullOrEmpty(name) == false)
-            {
-                return name;
-            }
-
-            return defaultValue;
-        }
-
         private bool LoadUserGameStatsSchema()
         {
-            string path;
-            try
-            {
-                string fileName = _($"UserGameStatsSchema_{this._GameId}.bin");
-                path = API.Steam.GetInstallPath();
-                path = Path.Combine(path, "appcache", "stats", fileName);
-                if (File.Exists(path) == false)
-                {
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogError($"Failed to resolve schema path for game {this._GameId}", ex);
-                return false;
-            }
-
-            var kv = KeyValue.LoadAsBinary(path);
-            if (kv == null)
-            {
-                return false;
-            }
             var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
+
+            var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
 
             this._achievementDefinitions.Clear();
             this._statDefinitions.Clear();
 
-            var stats = kv[this._GameId.ToString(CultureInfo.InvariantCulture)]["stats"];
-            if (stats.Valid == false || stats.Children == null)
+            if (!schemaManager.LoadSchema(out var achievements, out var stats))
             {
                 return false;
             }
 
-            foreach (var stat in stats.Children)
-            {
-                if (stat.Valid == false)
-                {
-                    continue;
-                }
+            this._achievementDefinitions.AddRange(achievements);
+            this._statDefinitions.AddRange(stats);
 
-                var rawType = stat["type_int"].Valid
-                                  ? stat["type_int"].AsInteger(0)
-                                  : stat["type"].AsInteger(0);
-                var type = (APITypes.UserStatType)rawType;
-                switch (type)
-                {
-                    case APITypes.UserStatType.Invalid:
-                    {
-                        break;
-                    }
+            // Initialize data services with loaded definitions
+            this._achievementDataService = new Services.AchievementDataService(
+                this._SteamClient,
+                this._achievementDefinitions);
 
-                    case APITypes.UserStatType.Integer:
-                        this._statDefinitions.Add(ParseIntegerStat(stat, currentLanguage));
-                        break;
-
-                    case APITypes.UserStatType.Float:
-                    case APITypes.UserStatType.AverageRate:
-                        this._statDefinitions.Add(ParseFloatStat(stat, currentLanguage));
-                        break;
-
-                    case APITypes.UserStatType.Achievements:
-                    case APITypes.UserStatType.GroupAchievements:
-                        ParseAchievements(stat, currentLanguage);
-                        break;
-
-                    default:
-                    {
-                        throw new InvalidOperationException("invalid stat type");
-                    }
-                }
-            }
+            this._statisticsDataService = new Services.StatisticsDataService(
+                this._SteamClient,
+                this._statDefinitions);
 
             return true;
-        }
-
-        /// <summary>
-        /// Parses an integer stat definition from the VDF schema.
-        /// </summary>
-        private Stats.IntegerStatDefinition ParseIntegerStat(KeyValue stat, string currentLanguage)
-        {
-            var id = stat["name"].AsString("");
-            string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-            return new Stats.IntegerStatDefinition()
-            {
-                Id = id,
-                DisplayName = name,
-                MinValue = stat["min"].AsInteger(int.MinValue),
-                MaxValue = stat["max"].AsInteger(int.MaxValue),
-                MaxChange = stat["maxchange"].AsInteger(0),
-                IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                SetByTrustedGameServer = stat["bSetByTrustedGS"].AsBoolean(false),
-                DefaultValue = stat["default"].AsInteger(0),
-                Permission = stat["permission"].AsInteger(0),
-            };
-        }
-
-        /// <summary>
-        /// Parses a float stat definition from the VDF schema.
-        /// </summary>
-        private Stats.FloatStatDefinition ParseFloatStat(KeyValue stat, string currentLanguage)
-        {
-            var id = stat["name"].AsString("");
-            string name = GetLocalizedString(stat["display"]["name"], currentLanguage, id);
-
-            return new Stats.FloatStatDefinition()
-            {
-                Id = id,
-                DisplayName = name,
-                MinValue = stat["min"].AsFloat(float.MinValue),
-                MaxValue = stat["max"].AsFloat(float.MaxValue),
-                MaxChange = stat["maxchange"].AsFloat(0.0f),
-                IncrementOnly = stat["incrementonly"].AsBoolean(false),
-                DefaultValue = stat["default"].AsFloat(0.0f),
-                Permission = stat["permission"].AsInteger(0),
-            };
-        }
-
-        /// <summary>
-        /// Parses achievement definitions from the VDF schema bits section.
-        /// </summary>
-        private void ParseAchievements(KeyValue stat, string currentLanguage)
-        {
-            if (stat.Children == null)
-            {
-                return;
-            }
-
-            foreach (var bits in stat.Children.Where(
-                b => string.Compare(b.Name, "bits", StringComparison.InvariantCultureIgnoreCase) == 0))
-            {
-                if (bits.Valid == false || bits.Children == null)
-                {
-                    continue;
-                }
-
-                foreach (var bit in bits.Children)
-                {
-                    string id = bit["name"].AsString("");
-                    string name = GetLocalizedString(bit["display"]["name"], currentLanguage, id);
-                    string desc = GetLocalizedString(bit["display"]["desc"], currentLanguage, "");
-
-                    this._achievementDefinitions.Add(new()
-                    {
-                        Id = id,
-                        Name = name,
-                        Description = desc,
-                        IconNormal = bit["display"]["icon"].AsString(""),
-                        IconLocked = bit["display"]["icon_gray"].AsString(""),
-                        IsHidden = bit["display"]["hidden"].AsBoolean(false),
-                        Permission = bit["permission"].AsInteger(0),
-                    });
-                }
-            }
         }
 
         private void OnUserStatsReceived(APITypes.UserStatsReceived param)
@@ -661,12 +350,13 @@ namespace SAM.Game
                 return;
             }
 
-            // Synchronize ListView with _achievementCounters
+            // Synchronize ListView with countdown timers
             foreach (ListViewItem item in _AchievementListView.Items)
             {
                 string key = item.SubItems[3].Text; // 3rd column is Key
 
-                if (_achievementCounters.TryGetValue(key, out int counter))
+                int counter = this._countdownTimerManager.GetTimer(key);
+                if (counter >= 0)
                 {
                     item.SubItems[4].Text = counter.ToString(); // Update the Counter column
                 }
@@ -706,64 +396,26 @@ namespace SAM.Game
 
             this._IsUpdatingAchievementList = true;
 
-            this._AchievementListView.Items.Clear();
-            this._AchievementListView.BeginUpdate();
-            //this.Achievements.Clear();
-
             bool wantLocked = this._DisplayLockedOnlyButton.Checked == true;
             bool wantUnlocked = this._DisplayUnlockedOnlyButton.Checked == true;
-            bool light = this.IsLightTheme();
 
-            foreach (var def in this._achievementDefinitions)
-            {
-                if (string.IsNullOrEmpty(def.Id) == true)
-                {
-                    continue;
-                }
+            // Load achievements using the data service
+            var achievements = this._achievementDataService.LoadAchievements(
+                wantLocked,
+                wantUnlocked,
+                textSearch);
 
-                if (this._SteamClient.SteamUserStats.GetAchievementAndUnlockTime(
-                    def.Id,
-                    out bool isAchieved,
-                    out var unlockTime) == false)
-                {
-                    continue;
-                }
+            // Populate ListView using the presenter
+            Presenters.AchievementListPresenter.PopulateListView(
+                this._AchievementListView,
+                achievements,
+                this.BackColor,
+                this.ForeColor,
+                this.sortColumn,
+                this.sortOrder,
+                (info) => this.QueueAchievementIcon(info, false));
 
-                bool wanted = (wantLocked == false && wantUnlocked == false) || isAchieved switch
-                {
-                    true => wantUnlocked,
-                    false => wantLocked,
-                };
-                if (wanted == false)
-                {
-                    continue;
-                }
-
-                if (textSearch != null)
-                {
-                    if (def.Name.IndexOf(textSearch, StringComparison.OrdinalIgnoreCase) < 0 &&
-                        (string.IsNullOrEmpty(def.Description) || def.Description.IndexOf(textSearch, StringComparison.OrdinalIgnoreCase) < 0))
-                    {
-                        continue;
-                    }
-                }
-
-                var info = CreateAchievementInfo(def, isAchieved, unlockTime);
-                var item = CreateAchievementListViewItem(info, def, light);
-                info.Item = item;
-                info.ImageIndex = 0;
-
-                // Queue the icon for download if it's not already available
-                this.QueueAchievementIcon(info, false);
-                this._AchievementListView.Items.Add(item);
-            }
-
-            // Sort using the current column/order before displaying
-            this._AchievementListView.ListViewItemSorter = new ListViewItemComparer(sortColumn, sortOrder);
-            this._AchievementListView.Sort();
-            this._AchievementListView.EndUpdate();
             this._IsUpdatingAchievementList = false;
-
             this.DownloadNextIcon();
         }
 
@@ -834,45 +486,13 @@ namespace SAM.Game
         private void GetStatistics()
         {
             this._statistics.Clear();
-            foreach (var stat in this._statDefinitions)
-            {
-                if (string.IsNullOrEmpty(stat.Id) == true)
-                {
-                    continue;
-                }
 
-                if (stat is Stats.IntegerStatDefinition intStat)
-                {
-                    if (this._SteamClient.SteamUserStats.GetStatValue(intStat.Id, out int value) == false)
-                    {
-                        continue;
-                    }
-                    this._statistics.Add(new Stats.IntStatInfo()
-                    {
-                        Id = intStat.Id,
-                        DisplayName = intStat.DisplayName,
-                        IntValue = value,
-                        OriginalValue = value,
-                        IsIncrementOnly = intStat.IncrementOnly,
-                        Permission = intStat.Permission,
-                    });
-                }
-                else if (stat is Stats.FloatStatDefinition floatStat)
-                {
-                    if (this._SteamClient.SteamUserStats.GetStatValue(floatStat.Id, out float value) == false)
-                    {
-                        continue;
-                    }
-                    this._statistics.Add(new Stats.FloatStatInfo()
-                    {
-                        Id = floatStat.Id,
-                        DisplayName = floatStat.DisplayName,
-                        FloatValue = value,
-                        OriginalValue = value,
-                        IsIncrementOnly = floatStat.IncrementOnly,
-                        Permission = floatStat.Permission,
-                    });
-                }
+            // Load statistics using the data service
+            var statistics = this._statisticsDataService.LoadStatistics();
+
+            foreach (var stat in statistics)
+            {
+                this._statistics.Add(stat);
             }
         }
 
@@ -897,27 +517,13 @@ namespace SAM.Game
                 return;
             }
 
-            if (this._UseIconCache == true)
+            if (this._achievementIconManager.TryLoadFromCache(info, out var cachedImage))
             {
-                var cachePath = this.GetAchievementCachePath(info);
-                if (cachePath != null)
-                {
-                    DebugLogger.Log($"Checking cache for icon '{info.Id}' at '{cachePath}'.");
-                    using var cacheResult = ImageCacheHelper.TryLoadFromCache(cachePath, DownloadLimits.MaxAchievementIconBytes);
-                    if (cacheResult.DisableCache)
-                    {
-                        this._UseIconCache = false;
-                    }
-                    else if (cacheResult.Success && cacheResult.Image != null)
-                    {
-                        this.AddAchievementIcon(info, cacheResult.Image);
-                        DebugLogger.Log($"Loaded icon '{info.Id}' from cache.");
-                        return;
-                    }
-                }
+                this.AddAchievementIcon(info, cachedImage);
+                return;
             }
 
-            this._iconQueue.Add(info);
+            this._achievementIconManager.QueueIcon(info);
 
             if (startDownload == true)
             {
@@ -950,24 +556,20 @@ namespace SAM.Game
                 return 0;
             }
 
-            foreach (var info in achievements)
+            // Store achievements using the data service
+            int result = this._achievementDataService.StoreAchievements(achievements);
+
+            if (result == -1 && !silent)
             {
-                if (this._SteamClient.SteamUserStats.SetAchievement(info.Id, info.IsAchieved) == false)
-                {
-                    if (!silent)
-                    {
-                        MessageBox.Show(
-                            this,
-                            $"An error occurred while setting the state for {info.Id}, aborting store.",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-                    return -1;
-                }
+                MessageBox.Show(
+                    this,
+                    "An error occurred while storing achievements.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
 
-            return achievements.Count;
+            return result;
         }
 
         private int StoreStatistics(bool silent = false)
@@ -983,31 +585,20 @@ namespace SAM.Game
                 return 0;
             }
 
-            foreach (var stat in statistics)
-            {
-                bool success = stat switch
-                {
-                    Stats.IntStatInfo intStat => this._SteamClient.SteamUserStats.SetStatValue(intStat.Id, intStat.IntValue),
-                    Stats.FloatStatInfo floatStat => this._SteamClient.SteamUserStats.SetStatValue(floatStat.Id, floatStat.FloatValue),
-                    _ => throw new InvalidOperationException("unsupported stat type")
-                };
+            // Store statistics using the data service
+            int result = this._statisticsDataService.StoreStatistics(statistics);
 
-                if (!success)
-                {
-                    if (!silent)
-                    {
-                        MessageBox.Show(
-                            this,
-                            $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-                    return -1;
-                }
+            if (result == -1 && !silent)
+            {
+                MessageBox.Show(
+                    this,
+                    "An error occurred while storing statistics.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
 
-            return statistics.Count;
+            return result;
         }
 
         private void DisableInput()
@@ -1316,7 +907,7 @@ namespace SAM.Game
                 item.SubItems[4].Text = timerValue.ToString(); // Fifth column (Display Index 4)
 
                 string key = item.SubItems[3].Text;
-                _achievementCounters[key] = timerValue; // Store value for refresh
+                this._countdownTimerManager.SetTimer(key, timerValue);
             }
 
             //MessageBox.Show("Selected rows have been successfully updated!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1337,30 +928,27 @@ namespace SAM.Game
 
         private void UpdateAchievementItem(ListViewItem item, ref bool shouldTriggerStore)
         {
-            // Get the Key (3rd column) and Counter (4th column)
-            string key = item.SubItems[3].Text; // 3rd column is Key
+            // Get the Key (3rd column)
+            string key = item.SubItems[3].Text;
 
-            string valueText = item.SubItems[4].Text; // 4th column is Counter
+            // Decrement timer using the service
+            bool timerReachedZero = this._countdownTimerManager.DecrementTimer(key, out int newValue);
 
-            if (int.TryParse(valueText, out int counter) && counter > 0)
+            // Update the Counter column in ListView
+            if (newValue >= 0)
             {
-                counter -= 1;
+                item.SubItems[4].Text = newValue.ToString();
+            }
+            else
+            {
+                item.SubItems[4].Text = "-1000";
+            }
 
-                // Update the Counter column in ListView
-                item.SubItems[4].Text = counter.ToString();
-
-                // Update the Dictionary
-                _achievementCounters[key] = counter;
-
-                // If the counter becomes 0, check the row and set the flag
-                if (counter == 0)
-                {
-                    item.Checked = true; // Check the row
-                    shouldTriggerStore = true; // Set the flag to trigger the store action
-
-                    item.SubItems[4].Text = "-1000";
-                    _achievementCounters[key] = -1; // Update the dictionary as well
-                }
+            // If the timer reached zero, check the row and trigger store
+            if (timerReachedZero)
+            {
+                item.Checked = true;
+                shouldTriggerStore = true;
             }
         }
 
@@ -1464,7 +1052,7 @@ namespace SAM.Game
                         : SortOrder.Ascending;
                 }
 
-                _AchievementListView.ListViewItemSorter = new ListViewItemComparer(e.Column, sortOrder);
+                _AchievementListView.ListViewItemSorter = new Presenters.AchievementListPresenter.ListViewItemComparer(e.Column, sortOrder);
                 _AchievementListView.Sort();
             }
             finally
@@ -1481,7 +1069,7 @@ namespace SAM.Game
                 this.BeginInvoke(new MethodInvoker(() =>
                 {
                     this.UpdateColors();
-                    this.TryApplyMica();
+                    WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
                 }));
             }
         }
@@ -1489,14 +1077,14 @@ namespace SAM.Game
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            this.TryApplyMica();
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
-            this.ApplyRoundedCorners();
+            WinForms.DwmWindowManager.ApplyRoundedCorners(this);
         }
 
         protected override void WndProc(ref Message m)
@@ -1553,7 +1141,7 @@ namespace SAM.Game
             else if (m.Msg == WindowMessages.WM_SETTINGCHANGE || m.Msg == WindowMessages.WM_THEMECHANGED)
             {
                 this.UpdateColors();
-                this.TryApplyMica();
+                WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             }
         }
 
@@ -1591,55 +1179,9 @@ namespace SAM.Game
             this.Close();
         }
 
-        private void TryApplyMica()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000) == false)
-            {
-                return;
-            }
-
-            int backdrop = DwmAttributes.DWMSBT_MAINWINDOW;
-            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
-
-            int dark = this.IsLightTheme() ? 0 : 1;
-            DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, Marshal.SizeOf<int>());
-        }
-
-        private void ApplyRoundedCorners()
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
-            {
-                int pref = DwmAttributes.DWMWCP_ROUND;
-                DwmSetWindowAttribute(this.Handle, DwmAttributes.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, Marshal.SizeOf<int>());
-            }
-            else
-            {
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, 8, 8);
-                this.Region = Region.FromHrgn(rgn);
-                DeleteObject(rgn);
-            }
-        }
-
-        private bool IsLightTheme()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-                object? value = key?.GetValue("AppsUseLightTheme");
-                if (value is int i)
-                {
-                    return i != 0;
-                }
-            }
-            catch
-            {
-            }
-            return true;
-        }
-
         private void UpdateColors()
         {
-            bool light = this.IsLightTheme();
+            bool light = WinForms.WindowsThemeDetector.IsLightTheme();
             if (light)
             {
                 this._BorderColor = Color.FromArgb(200, 200, 200);
@@ -1678,43 +1220,6 @@ namespace SAM.Game
             }
 
             base.Dispose(disposing);
-        }
-        class ListViewItemComparer : System.Collections.IComparer
-        {
-            private readonly int col;
-            private readonly SortOrder order;
-
-            public ListViewItemComparer(int column, SortOrder order)
-            {
-                col = column;
-                this.order = order;
-            }
-
-            public int Compare(object? x, object? y)
-            {
-                if (x is not ListViewItem itemX || y is not ListViewItem itemY)
-                {
-                    return 0;
-                }
-
-                var s1 = itemX.SubItems[col].Text;
-                var s2 = itemY.SubItems[col].Text;
-
-                int result;
-
-                // Try to parse as DateTime for date comparison
-                if (DateTime.TryParse(s1, out DateTime d1) && DateTime.TryParse(s2, out DateTime d2))
-                {
-                    result = DateTime.Compare(d1, d2);
-                }
-                else
-                {
-                    // Default to string comparison
-                    result = String.Compare(s1, s2);
-                }
-
-                return (order == SortOrder.Ascending) ? result : -result;
-            }
         }
     }
 }
