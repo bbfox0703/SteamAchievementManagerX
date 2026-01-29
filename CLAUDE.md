@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Steam Achievement Manager X (SAM.X) is a fork of gibbed/SteamAchievementManager, upgraded to .NET 8.0 with x64 architecture. It allows users to unlock/lock Steam achievements and modify game statistics through direct Steam API integration.
+Steam Achievement Manager X (SAM.X) is a fork of gibbed/SteamAchievementManager, upgraded to .NET 10 with x64 architecture. It allows users to unlock/lock Steam achievements and modify game statistics through direct Steam API integration.
 
 **Key Fork Features:**
 - Multi-language support for achievements
@@ -52,7 +52,7 @@ The solution consists of 4 main projects + 2 test projects:
 
 **SAM.API** - Steam API Wrapper Layer
 - Provides managed C# wrappers around native Steam Client APIs
-- Multi-targeted: `net8.0` (cross-platform) and `net8.0-windows` (Windows-specific)
+- Target framework: `net10.0-windows` (Windows-only)
 - Loads `steamclient64.dll` dynamically from Steam install directory
 - Security: Validates DLL signature against Valve Corporation's certificate
 - Uses unsafe code for native interop with Steam interfaces
@@ -315,7 +315,7 @@ SAM.API uses `unsafe` code blocks for:
    - Ensures pure x64 design from API to UI layer
 
 2. **Steamworks.NET Dependency Removal** (2025-12-31)
-   - Removed `net8.0` target framework from SAM.API (kept only `net8.0-windows`)
+   - Removed cross-platform target framework from SAM.API (Windows-only now)
    - Removed Steamworks.NET package dependency
    - Eliminated all `#if WINDOWS / #else` conditional compilation
    - Deleted ~86 lines of cross-platform compatibility code
@@ -327,7 +327,7 @@ SAM.API uses `unsafe` code blocks for:
      - OpenSSL packages (not needed on Windows)
      - Outdated packages (System.Net.Http 4.3.4, System.Text.RegularExpressions 4.3.1)
      - Unused packages (Newtonsoft.Json, Microsoft.NETCore.Platforms)
-   - Changed target framework from `net8.0` to `net8.0-windows`
+   - Changed target framework to Windows-only (`net10.0-windows`)
    - Reduced package count from 26 to 4 essential packages only
 
 4. **Exception Handling Improvements** (2025-12-31)
