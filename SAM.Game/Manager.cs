@@ -64,6 +64,7 @@ namespace SAM.Game
         private readonly List<Stats.AchievementDefinition> _achievementDefinitions = new();
 
         private readonly BindingList<Stats.StatInfo> _statistics = new();
+        private BindingSource? _statisticsBindingSource;
 
         private readonly API.Callbacks.UserStatsReceived _userStatsReceivedCallback;
 
@@ -163,18 +164,15 @@ namespace SAM.Game
             this._StatisticsDataGridView.Columns[2].Width = 200;
             this._StatisticsDataGridView.Columns[2].DataPropertyName = "Extra";
 
-            this._StatisticsDataGridView.DataSource = new BindingSource()
+            this._statisticsBindingSource = new BindingSource()
             {
                 DataSource = this._statistics,
             };
+            this._StatisticsDataGridView.DataSource = this._statisticsBindingSource;
 
             this._GameId = gameId;
             this._SteamClient = client;
 
-            this.FormClosed += (_, _) =>
-            {
-                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
-            };
             SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
 
             this._IconCacheDirectory = Path.Combine(
@@ -404,6 +402,18 @@ namespace SAM.Game
                 wantLocked,
                 wantUnlocked,
                 textSearch);
+
+            // Dispose old achievement images before repopulating
+            for (int i = this._AchievementImageList.Images.Count - 1; i >= 1; i--)
+            {
+                this._AchievementImageList.Images[i]?.Dispose();
+            }
+            if (this._AchievementImageList.Images.Count > 1)
+            {
+                var blank = this._AchievementImageList.Images[0];
+                this._AchievementImageList.Images.Clear();
+                this._AchievementImageList.Images.Add("Blank", blank);
+            }
 
             // Populate ListView using the presenter
             Presenters.AchievementListPresenter.PopulateListView(
@@ -1213,10 +1223,22 @@ namespace SAM.Game
         {
             if (disposing)
             {
-                if (components != null)
+                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
+
+                _statisticsBindingSource?.Dispose();
+                _statisticsBindingSource = null;
+
+                // Dispose all images in ImageList before disposing components
+                if (_AchievementImageList?.Images != null)
                 {
-                    components.Dispose();
+                    foreach (Image img in _AchievementImageList.Images)
+                    {
+                        img?.Dispose();
+                    }
+                    _AchievementImageList.Images.Clear();
                 }
+
+                components?.Dispose();
             }
 
             base.Dispose(disposing);
