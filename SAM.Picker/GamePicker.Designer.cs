@@ -34,15 +34,24 @@
                 }
 
                 // Unsubscribe from events to prevent memory leaks
+                Microsoft.Win32.SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
+
                 if (this._AppDataChangedCallback != null)
                 {
                     this._AppDataChangedCallback.OnRun -= this.OnAppDataChanged;
                 }
 
-                if (components != null)
+                // Dispose all images in ImageList
+                if (this._LogoImageList?.Images != null)
                 {
-                    components.Dispose();
+                    foreach (System.Drawing.Image img in this._LogoImageList.Images)
+                    {
+                        img?.Dispose();
+                    }
+                    this._LogoImageList.Images.Clear();
                 }
+
+                components?.Dispose();
             }
             base.Dispose(disposing);
         }

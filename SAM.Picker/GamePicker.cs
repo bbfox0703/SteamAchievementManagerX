@@ -127,11 +127,6 @@ namespace SAM.Picker
             this._LogoImageList.Images.Add("Blank", blank);
 
             this._SteamClient = client;
-            this.FormClosed += (_, _) =>
-            {
-                SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
-            };
-
             SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
 
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
