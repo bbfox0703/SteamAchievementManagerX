@@ -20,7 +20,7 @@ if exist "%OUTPUT_DIR%" (
 
 :: Build Release (framework-dependent) to upload/ as usual
 echo.
-echo [1/3] Building Release (framework-dependent) to %UPLOAD_DIR%\...
+echo [1/4] Building Release (framework-dependent) to %UPLOAD_DIR%\...
 dotnet build %SOLUTION% -c Release -p:Platform=%PLATFORM%
 if errorlevel 1 (
     echo ERROR: Release build failed.
@@ -29,7 +29,7 @@ if errorlevel 1 (
 
 :: Publish self-contained
 echo.
-echo [2/3] Publishing self-contained to %OUTPUT_DIR%\...
+echo [2/4] Publishing self-contained to %OUTPUT_DIR%\...
 dotnet publish SAM.Picker\SAM.Picker.csproj -c Release -r %RUNTIME% --self-contained true -p:Platform=%PLATFORM% -p:PublishSingleFile=false -o "%OUTPUT_DIR%"
 if errorlevel 1 (
     echo ERROR: SAM.Picker publish failed.
@@ -42,9 +42,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: Clean up build artifacts
+echo.
+echo [3/4] Cleaning up build artifacts...
+if exist "%UPLOAD_DIR%\win-x64" rmdir /s /q "%UPLOAD_DIR%\win-x64"
+del /q "%UPLOAD_DIR%\*.pdb" 2>nul
+del /q "%OUTPUT_DIR%\*.pdb" 2>nul
+
 :: Copy extra files (same as Release build)
 echo.
-echo [3/3] Copying extra files...
+echo [4/4] Copying extra files...
 copy /y "SAM.Picker\games.xml" "%OUTPUT_DIR%\games.xml" >nul
 copy /y "SAM.Game\LICENSE.txt" "%OUTPUT_DIR%\LICENSE.txt" >nul
 
