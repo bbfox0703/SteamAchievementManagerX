@@ -17,7 +17,12 @@
     <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="Microsoft.Testing.Extensions.Telemetry" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport.Abstractions" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Testing.Platform" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" Version="2.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
