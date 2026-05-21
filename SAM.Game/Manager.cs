@@ -55,6 +55,9 @@ namespace SAM.Game
         private Services.AchievementDataService _achievementDataService = null!;
         private Services.StatisticsDataService _statisticsDataService = null!;
         private readonly Services.CountdownTimerManager _countdownTimerManager = new();
+        private readonly CancellationTokenSource _iconDownloadCts = new();
+        private System.Threading.Tasks.Task? _iconDownloadTask;
+        private bool _iconDownloadInFlight;
 
         private const int MaxTimerTextLength = 6; // Maximum digits for timer input
         private const int MouseMoveDistance = 15; // Pixels to move mouse
@@ -187,6 +190,7 @@ namespace SAM.Game
             }
             catch (Exception ex)
             {
+                DebugLogger.LogError($"Failed to create icon cache directory '{this._IconCacheDirectory}'", ex);
                 useIconCache = false;
             }
 
@@ -231,38 +235,66 @@ namespace SAM.Game
             }
         }
 
-        private async void DownloadNextIcon()
+        private void DownloadNextIcon()
         {
-            if (this._achievementIconManager.QueueCount == 0)
+            if (this._iconDownloadInFlight)
             {
-                this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._achievementIconManager.QueueCount} icons...";
-            this._DownloadStatusLabel.Visible = true;
-
-            var info = this._achievementIconManager.DequeueIcon();
-            if (info == null)
+            if (this._iconDownloadCts.IsCancellationRequested)
             {
-                this._DownloadStatusLabel.Visible = false;
                 return;
             }
 
-            Bitmap? bitmap = null;
+            this._iconDownloadInFlight = true;
+            this._iconDownloadTask = this.DownloadIconsLoopAsync(this._iconDownloadCts.Token);
+        }
+
+        private async System.Threading.Tasks.Task DownloadIconsLoopAsync(CancellationToken cancellationToken)
+        {
             try
             {
-                bitmap = await this._achievementIconManager.DownloadIconAsync(info);
+                while (cancellationToken.IsCancellationRequested == false
+                    && this._achievementIconManager.QueueCount > 0)
+                {
+                    this._DownloadStatusLabel.Text = $"Downloading {this._achievementIconManager.QueueCount} icons...";
+                    this._DownloadStatusLabel.Visible = true;
+
+                    var info = this._achievementIconManager.DequeueIcon();
+                    if (info == null)
+                    {
+                        break;
+                    }
+
+                    Bitmap? bitmap = null;
+                    try
+                    {
+                        bitmap = await this._achievementIconManager.DownloadIconAsync(info);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.Log(ex);
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        bitmap?.Dispose();
+                        return;
+                    }
+
+                    this.AddAchievementIcon(info, bitmap);
+                    this._AchievementListView.Update();
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                DebugLogger.Log(ex);
+                this._iconDownloadInFlight = false;
+                if (cancellationToken.IsCancellationRequested == false)
+                {
+                    this._DownloadStatusLabel.Visible = false;
+                }
             }
-
-            this.AddAchievementIcon(info, bitmap);
-            this._AchievementListView.Update();
-
-            this.DownloadNextIcon();
         }
 
         private static string TranslateError(int id) => id switch
@@ -1223,6 +1255,15 @@ namespace SAM.Game
         {
             if (disposing)
             {
+                try
+                {
+                    _iconDownloadCts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+                _iconDownloadCts.Dispose();
+
                 SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
 
                 _statisticsBindingSource?.Dispose();

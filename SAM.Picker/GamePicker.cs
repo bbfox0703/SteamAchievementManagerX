@@ -294,14 +294,19 @@ namespace SAM.Picker
 
         private async System.Threading.Tasks.Task<(byte[] Data, string ContentType)> DownloadDataAsync(Uri uri)
         {
-            HttpResponseMessage response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead);
+            HttpResponseMessage response;
+            using (var request = new HttpRequestMessage(HttpMethod.Get, uri))
+            {
+                response = await WinForms.HttpClientManager.Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound &&
                 uri.Host.Equals("shared.cloudflare.steamstatic.com", StringComparison.OrdinalIgnoreCase))
             {
                 response.Dispose();
                 var fallbackUri = new UriBuilder(uri) { Host = "shared.steamstatic.com" }.Uri;
-                response = await WinForms.HttpClientManager.Client.SendAsync(new HttpRequestMessage(HttpMethod.Get, fallbackUri), HttpCompletionOption.ResponseHeadersRead);
+                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, fallbackUri);
+                response = await WinForms.HttpClientManager.Client.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead);
             }
 
             using (response)

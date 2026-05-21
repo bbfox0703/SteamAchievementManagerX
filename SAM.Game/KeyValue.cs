@@ -223,8 +223,21 @@ namespace SAM.Game
             }
         }
 
+        private const int MaxBinaryDepth = 100;
+
         public bool ReadAsBinary(Stream input)
         {
+            return this.ReadAsBinary(input, 0);
+        }
+
+        private bool ReadAsBinary(Stream input, int depth)
+        {
+            if (depth > MaxBinaryDepth)
+            {
+                DebugLogger.LogError($"VDF binary nesting depth exceeded {MaxBinaryDepth}");
+                return false;
+            }
+
             this.Children = new();
             try
             {
@@ -247,7 +260,10 @@ namespace SAM.Game
                     {
                         case KeyValueType.None:
                         {
-                            current.ReadAsBinary(input);
+                            if (current.ReadAsBinary(input, depth + 1) == false)
+                            {
+                                return false;
+                            }
                             break;
                         }
 

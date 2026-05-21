@@ -46,7 +46,7 @@ dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj --filter "FullyQualifiedNam
 | File | Purpose |
 |------|---------|
 | `SAM.API\Client.cs` | Steam client lifecycle management |
-| `SAM.API\Steam.cs` | Native DLL loading with security validation |
+| `SAM.API\Steam.cs` | Native DLL loading (absolute path from HKLM `Software\Valve\Steam`, scoped via `AddDllDirectory` + `LoadLibrarySearchUserDirs`; no Authenticode/signature check) |
 | `SAM.API\NativeWrapper.cs` | Base class for Steam API wrappers |
 | `SAM.Game\KeyValue.cs` | VDF binary parser (critical for schema reading) |
 | `SAM.Picker\GamePicker.cs` | Game selection UI (1200+ lines) |

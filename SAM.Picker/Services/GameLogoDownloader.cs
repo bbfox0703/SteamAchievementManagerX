@@ -77,7 +77,10 @@ namespace SAM.Picker.Services
             {
                 if (ImageValidator.TryLoadImageFromCache(cacheFile, MaxLogoBytes, MaxLogoDimension, out var cachedImage))
                 {
-                    logo = cachedImage.ResizeToFit(targetSize);
+                    using (cachedImage)
+                    {
+                        logo = cachedImage!.ResizeToFit(targetSize);
+                    }
                     return true;
                 }
                 return false;
@@ -138,7 +141,11 @@ namespace SAM.Picker.Services
 
                     if (ImageValidator.TryValidateAndLoadImage(data, MaxLogoBytes, MaxLogoDimension, out var image))
                     {
-                        Bitmap bitmap = image.ResizeToFit(targetSize);
+                        Bitmap bitmap;
+                        using (image)
+                        {
+                            bitmap = image!.ResizeToFit(targetSize);
+                        }
                         info.ImageUrl = url;
 
                         if (this._useIconCache && cacheFile != null)
