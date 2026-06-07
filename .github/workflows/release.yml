@@ -29,7 +29,11 @@ jobs:
         shell: pwsh
         run: |
           $cur  = "${{ github.ref_name }}"
-          $prev = (git describe --tags --abbrev=0 "$cur^" 2>$null)
+          # Most recent v* tag that is an ancestor of this tag's parent (the previous release).
+          # Tags are expected to be created on master; tagging on dev would miss master's
+          # merge-commit tags and pick an older one.
+          $prev = (git tag -l "v*" --merged "$cur^" --sort=-creatordate |
+                   Where-Object { $_ -ne $cur } | Select-Object -First 1)
           if ($prev) {
             $commits = git log --no-merges "--pretty=format:- %s (%h)" "$prev..$cur"
             $header  = "## Changes since $prev"
