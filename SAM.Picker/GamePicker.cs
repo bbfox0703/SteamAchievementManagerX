@@ -108,6 +108,7 @@ namespace SAM.Picker
             catch (Exception ex)
             {
                 useIconCache = false;
+                DebugLogger.Log($"Icon cache disabled; failed to create '{iconCacheDirectory}': {ex}");
             }
 
             this._logoDownloader = new Services.GameLogoDownloader(iconCacheDirectory, useIconCache);
@@ -118,13 +119,16 @@ namespace SAM.Picker
             this._PickerToolStrip.MouseDown += this.OnDragWindow;
             this._PickerStatusStrip.MouseDown += this.OnDragWindow;
 
-            Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height);
-            using (var g = Graphics.FromImage(blank))
+            using (Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height))
             {
-                g.Clear(Color.DimGray);
-            }
+                using (var g = Graphics.FromImage(blank))
+                {
+                    g.Clear(Color.DimGray);
+                }
 
-            this._LogoImageList.Images.Add("Blank", blank);
+                // ImageList stores its own copy; dispose the source to avoid a GDI leak.
+                this._LogoImageList.Images.Add("Blank", blank);
+            }
 
             this._SteamClient = client;
             SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;
@@ -281,7 +285,12 @@ namespace SAM.Picker
                 return;
             }
 
-            if (this._Games.TryGetValue(param.Id, out var game) == false)
+            GameInfo? game;
+            lock (this._GamesLock)
+            {
+                this._Games.TryGetValue(param.Id, out game);
+            }
+            if (game == null)
             {
                 return;
             }
@@ -570,16 +579,35 @@ namespace SAM.Picker
 
         private void OnDownloadLogo(object sender, RunWorkerCompletedEventArgs e)
         {
+            // Note: e.Result must only be read when not errored/cancelled, otherwise it throws.
             if (e.Error == null && e.Cancelled == false &&
                 e.Result is LogoInfo logoInfo &&
-                logoInfo.Bitmap != null &&
-                this._Games.TryGetValue(logoInfo.Id, out var gameInfo) == true)
+                logoInfo.Bitmap != null)
             {
-                this._GameListView.BeginUpdate();
-                var imageIndex = this._LogoImageList.Images.Count;
-                this._LogoImageList.Images.Add(gameInfo.ImageUrl, logoInfo.Bitmap);
-                gameInfo.ImageIndex = imageIndex;
-                this._GameListView.EndUpdate();
+                GameInfo? gameInfo;
+                lock (this._GamesLock)
+                {
+                    this._Games.TryGetValue(logoInfo.Id, out gameInfo);
+                }
+
+                if (gameInfo != null)
+                {
+                    this._GameListView.BeginUpdate();
+                    try
+                    {
+                        var imageIndex = this._LogoImageList.Images.Count;
+                        this._LogoImageList.Images.Add(gameInfo.ImageUrl, logoInfo.Bitmap);
+                        gameInfo.ImageIndex = imageIndex;
+                    }
+                    finally
+                    {
+                        this._GameListView.EndUpdate();
+                    }
+                }
+
+                // ImageList stored its own copy; and if the game was removed before we got
+                // here the bitmap is unused. Either way the worker-owned source is disposed.
+                logoInfo.Bitmap.Dispose();
             }
 
             // Always continue to next download, even on error
@@ -641,6 +669,7 @@ namespace SAM.Picker
                 imageIndex = this._LogoImageList.Images.Count;
                 this._LogoImageList.Images.Add(imageUrl, cachedLogo);
                 info.ImageIndex = imageIndex;
+                cachedLogo.Dispose(); // ImageList stored its own copy
                 return;
             }
 

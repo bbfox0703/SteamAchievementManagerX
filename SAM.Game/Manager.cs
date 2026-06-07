@@ -55,7 +55,7 @@ namespace SAM.Game
         private Services.AchievementDataService _achievementDataService = null!;
         private Services.StatisticsDataService _statisticsDataService = null!;
         private readonly Services.CountdownTimerManager _countdownTimerManager = new();
-        private readonly CancellationTokenSource _iconDownloadCts = new();
+        private CancellationTokenSource _iconDownloadCts = new();
         private System.Threading.Tasks.Task? _iconDownloadTask;
         private bool _iconDownloadInFlight;
 
@@ -230,7 +230,9 @@ namespace SAM.Game
             {
                 var key = info.Id + "_" + (info.IsAchieved == true ? "achieved" : "locked");
                 info.ImageIndex = this._AchievementImageList.Images.Count;
-                this._AchievementImageList.Images.Add(key, new Bitmap(icon));
+                // ImageList stores its own copy, so add the icon directly and dispose the
+                // source -- no need for an extra intermediate Bitmap copy.
+                this._AchievementImageList.Images.Add(key, icon);
                 icon.Dispose();
             }
         }
@@ -248,11 +250,32 @@ namespace SAM.Game
             }
 
             this._iconDownloadInFlight = true;
-            this._iconDownloadTask = this.DownloadIconsLoopAsync(this._iconDownloadCts.Token);
+            this._iconDownloadTask = this.DownloadIconsLoopAsync(this._iconDownloadCts);
         }
 
-        private async System.Threading.Tasks.Task DownloadIconsLoopAsync(CancellationToken cancellationToken)
+        // Cancels any in-flight icon download loop from a previous population and starts a fresh
+        // generation, so a stale loop can't apply icons (with now-wrong indices) to a rebuilt list.
+        private void ResetIconDownloads()
         {
+            var previous = this._iconDownloadCts;
+            try
+            {
+                previous.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            this._iconDownloadCts = new CancellationTokenSource();
+            this._iconDownloadInFlight = false;
+            this._achievementIconManager?.ClearQueue();
+
+            previous.Dispose();
+        }
+
+        private async System.Threading.Tasks.Task DownloadIconsLoopAsync(CancellationTokenSource cts)
+        {
+            var cancellationToken = cts.Token;
             try
             {
                 while (cancellationToken.IsCancellationRequested == false
@@ -289,10 +312,15 @@ namespace SAM.Game
             }
             finally
             {
-                this._iconDownloadInFlight = false;
-                if (cancellationToken.IsCancellationRequested == false)
+                // Only clear shared state if this loop is still the current generation; a newer
+                // ResetIconDownloads() may have swapped in a fresh CTS and started another loop.
+                if (ReferenceEquals(this._iconDownloadCts, cts))
                 {
-                    this._DownloadStatusLabel.Visible = false;
+                    this._iconDownloadInFlight = false;
+                    if (cancellationToken.IsCancellationRequested == false)
+                    {
+                        this._DownloadStatusLabel.Visible = false;
+                    }
                 }
             }
         }
@@ -420,6 +448,9 @@ namespace SAM.Game
 
         private void GetAchievements()
         {
+            // Stop any icon download loop from a previous population before rebuilding the list.
+            this.ResetIconDownloads();
+
             var textSearch = this._MatchingStringTextBox.Text.Length > 0
                 ? this._MatchingStringTextBox.Text
                 : null;

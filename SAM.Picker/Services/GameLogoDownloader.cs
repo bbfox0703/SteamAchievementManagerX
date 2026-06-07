@@ -194,6 +194,12 @@ namespace SAM.Picker.Services
         {
             if (this._logoQueue.TryDequeue(out var info))
             {
+                lock (this._logoLock)
+                {
+                    // The URL moves from "attempting" (queued) to "attempted" (handled in
+                    // DownloadLogoAsync); drop it here so the set doesn't grow unbounded.
+                    this._logosAttempting.Remove(info.ImageUrl);
+                }
                 return info;
             }
             return null;
@@ -208,6 +214,9 @@ namespace SAM.Picker.Services
             {
                 while (this._logoQueue.TryDequeue(out var logo))
                 {
+                    // Clear both sets so a cleared URL can be queued again later; leaving it in
+                    // _logosAttempting would permanently block re-queueing it.
+                    this._logosAttempting.Remove(logo.ImageUrl);
                     this._logosAttempted.Remove(logo.ImageUrl);
                 }
             }

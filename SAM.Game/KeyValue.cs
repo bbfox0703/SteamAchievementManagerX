@@ -103,7 +103,8 @@ namespace SAM.Game
 
                 case KeyValueType.UInt64:
                 {
-                    return (int)((ulong)this.Value! & 0xFFFFFFFF);
+                    ulong u = (ulong)this.Value!;
+                    return u <= int.MaxValue ? (int)u : defaultValue;
                 }
             }
 
@@ -139,7 +140,7 @@ namespace SAM.Game
 
                 case KeyValueType.UInt64:
                 {
-                    return (ulong)this.Value! & 0xFFFFFFFF;
+                    return (float)(ulong)this.Value!;
                 }
             }
 

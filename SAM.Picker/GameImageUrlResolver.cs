@@ -104,6 +104,9 @@ namespace SAM.Picker
             return null;
         }
 
+        private static readonly System.Text.RegularExpressions.Regex SafeFileNameRegex =
+            new(@"^[A-Za-z0-9._-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
         internal static bool TrySanitizeCandidate(string candidate, out string sanitized)
         {
             sanitized = Path.GetFileName(candidate);
@@ -115,6 +118,13 @@ namespace SAM.Picker
             }
 
             if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Scheme) == false)
+            {
+                return false;
+            }
+
+            // sanitized is concatenated unencoded into a CDN URL path; restrict it to characters
+            // that are safe there (rejects spaces, %, ?, #, and other URL-significant characters).
+            if (string.IsNullOrEmpty(sanitized) || SafeFileNameRegex.IsMatch(sanitized) == false)
             {
                 return false;
             }

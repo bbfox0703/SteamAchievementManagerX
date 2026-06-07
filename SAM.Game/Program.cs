@@ -50,7 +50,7 @@ namespace SAM.Game
 
                 try
                 {
-                    Process.Start(pickerExe);
+                    using var process = Process.Start(pickerExe);
                 }
                 catch (Win32Exception)
                 {

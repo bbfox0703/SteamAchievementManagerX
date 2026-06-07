@@ -224,6 +224,12 @@ namespace SAM.API
                 Native.FreeLibrary(_Handle);
                 _Handle = IntPtr.Zero;
             }
+
+            // Drop the cached export delegates; after FreeLibrary they point into the
+            // unloaded module. Load() re-resolves them when the library is loaded again.
+            _CallCreateInterface = null;
+            _CallSteamBGetCallback = null;
+            _CallSteamFreeLastCallback = null;
         }
     }
 }

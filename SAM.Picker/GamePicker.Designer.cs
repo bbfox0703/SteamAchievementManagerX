@@ -33,6 +33,9 @@
                     }
                 }
 
+                this._LogoWorker?.Dispose();
+                this._ListWorker?.Dispose();
+
                 // Unsubscribe from events to prevent memory leaks
                 Microsoft.Win32.SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;
 
