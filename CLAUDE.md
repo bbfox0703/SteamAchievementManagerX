@@ -26,14 +26,30 @@ dotnet build SAM.Game/SAM.Game.csproj -c Debug -p:Platform=x64
 
 **Run tests:**
 ```bash
+# Whole solution (recommended)
+dotnet test --solution SAM.sln -c Release -p:Platform=x64
+
+# Single project
 dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj -p:Platform=x64
 dotnet test SAM.Game.Tests/SAM.Game.Tests.csproj -p:Platform=x64
 ```
 
 **Run single test:**
 ```bash
-dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj --filter "FullyQualifiedName~TestName" -p:Platform=x64
+# Tests run under Microsoft.Testing.Platform (MTP), not VSTest. The legacy
+# `--filter "FullyQualifiedName~Name"` syntax does NOT work. Pass xunit.v3's
+# native filter args after `--`:
+dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj -p:Platform=x64 -- --filter-method "*TestName*"
+# Other selectors: --filter-class "*ClassName*", --filter-namespace "*Ns*"
 ```
+
+**Note on test tooling:** `dotnet test` runs in MTP mode, enabled by the repo-root
+`global.json` (`test.runner = Microsoft.Testing.Platform`). On the .NET 10 SDK the
+legacy VSTest path is gone. Do NOT add `--nologo` (a VSTest-only flag that MTP
+forwards to the test app and breaks the run). The test projects rely on `xunit.v3`
+to bring `Microsoft.Testing.Platform` transitively (1.9.1) — do not re-add explicit
+`Microsoft.Testing.Platform*` or `Microsoft.NET.Test.Sdk` references, which pin an
+incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.DisplayAsync`.
 
 **Output locations:**
 - Debug builds: `bin/` directory

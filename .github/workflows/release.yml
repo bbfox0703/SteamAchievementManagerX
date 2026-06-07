@@ -29,6 +29,12 @@ jobs:
       - name: Restore
         run: dotnet restore SAM.sln -p:Platform=x64
 
+      # 套件版本對齊後（xunit.v3 3.2.2 ↔ Microsoft.Testing.Platform 1.9.1），
+      # 發佈前用 MTP runner 跑測試把關；測試失敗就不發佈。
+      # 注意：MTP 模式不可加 --nologo（那是 VSTest 專用旗標，會被轉送到測試程式而中斷執行）。
+      - name: Test
+        run: dotnet test --solution SAM.sln -c Release -p:Platform=x64
+
       # 兩個 WinExe 各自 self-contained 發佈到同一個 publish 資料夾，
       # 共用的 .NET 10 runtime 會自動去重，使用者免裝 runtime 直接執行
       - name: Publish SAM.Picker (self-contained, win-x64)
