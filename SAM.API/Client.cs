@@ -101,18 +101,25 @@ namespace SAM.API
                 return;
             }
 
-            if (this.SteamClient != null && this._Pipe > 0)
+            // Only touch Steam (managed wrappers over native COM-like interfaces) on the
+            // deterministic Dispose path. Doing this from the finalizer thread (disposing == false)
+            // would marshal into Steam's pipe during teardown, which is unsafe.
+            if (disposing == true)
             {
-                if (this._User > 0)
+                if (this.SteamClient != null && this._Pipe > 0)
                 {
-                    this.SteamClient.ReleaseUser(this._Pipe, this._User);
-                    this._User = 0;
-                }
+                    if (this._User > 0)
+                    {
+                        this.SteamClient.ReleaseUser(this._Pipe, this._User);
+                        this._User = 0;
+                    }
 
-                this.SteamClient.ReleaseSteamPipe(this._Pipe);
-                this._Pipe = 0;
+                    this.SteamClient.ReleaseSteamPipe(this._Pipe);
+                    this._Pipe = 0;
+                }
+                Steam.Unload();
             }
-            Steam.Unload();
+
             this._IsDisposed = true;
         }
 
@@ -141,20 +148,37 @@ namespace SAM.API
 
             this._RunningCallbacks = true;
 
-            Types.CallbackMessage message;
-            while (Steam.GetCallback(this._Pipe, out message, out _) == true)
+            try
             {
-                var callbackId = message.Id;
-                foreach (ICallback callback in this._Callbacks.Where(
-                    candidate => candidate.Id == callbackId &&
-                                 candidate.IsServer == server))
+                Types.CallbackMessage message;
+                while (Steam.GetCallback(this._Pipe, out message, out _) == true)
                 {
-                    callback.Run(message.ParamPointer);
+                    try
+                    {
+                        var callbackId = message.Id;
+                        foreach (ICallback callback in this._Callbacks.Where(
+                            candidate => candidate.Id == callbackId &&
+                                         candidate.IsServer == server))
+                        {
+                            callback.Run(message.ParamPointer);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // A throwing callback handler must not abort dispatch or leave the
+                        // native callback unfreed; log and continue draining the queue.
+                        DebugLogger.LogError("Exception while running Steam callback", ex);
+                    }
+                    finally
+                    {
+                        Steam.FreeLastCallback(this._Pipe);
+                    }
                 }
-                Steam.FreeLastCallback(this._Pipe);
             }
-
-            this._RunningCallbacks = false;
+            finally
+            {
+                this._RunningCallbacks = false;
+            }
         }
     }
 }

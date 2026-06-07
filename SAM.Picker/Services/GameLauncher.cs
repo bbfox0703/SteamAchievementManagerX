@@ -27,7 +27,7 @@ namespace SAM.Picker.Services
                     return false;
                 }
 
-                Process.Start(new ProcessStartInfo
+                using var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = gamePath,
                     Arguments = gameId.ToString(),
