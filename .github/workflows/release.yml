@@ -19,6 +19,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 需要完整歷史與 tag 才能產生 changelog
+
+      # 產生「上個 tag ↔ 這個 tag」之間的 commit 清單，當作 release notes 內文。
+      # generate_release_notes 仍會在其後附上 GitHub 的 Full Changelog 比較連結。
+      - name: Build changelog
+        id: changelog
+        shell: pwsh
+        run: |
+          $cur  = "${{ github.ref_name }}"
+          $prev = (git describe --tags --abbrev=0 "$cur^" 2>$null)
+          if ($prev) {
+            $commits = git log --no-merges "--pretty=format:- %s (%h)" "$prev..$cur"
+            $header  = "## Changes since $prev"
+          } else {
+            $commits = git log --no-merges "--pretty=format:- %s (%h)" $cur
+            $header  = "## Changes"
+          }
+          $log = ($commits -join "`n")
+          if ([string]::IsNullOrWhiteSpace($log)) { $log = "- (no commits)" }
+          "body<<__CHANGELOG_EOF__`n$header`n`n$log`n__CHANGELOG_EOF__" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -56,3 +78,4 @@ jobs:
           files: ${{ env.ASSET }}
           fail_on_unmatched_files: true
           generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
