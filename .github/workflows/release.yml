@@ -1,0 +1,58 @@
+name: Release
+
+# 只要推送符合 v* 的 Tag（例如 v20260324），就會自動測試、建置、打包，
+# 並把 zip 附到對應的 GitHub Release。
+on:
+  push:
+    tags:
+      - 'v*'
+
+# action-gh-release 需要寫入 Release 的權限
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # 專案使用 WinForms + 原生 steam_api64.dll，必須在 Windows 上建置
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # 整個 solution 為 x64-only，所有指令都需帶 -p:Platform=x64
+      - name: Restore
+        run: dotnet restore SAM.sln -p:Platform=x64
+
+      # 套件版本對齊後（xunit.v3 3.2.2 ↔ Microsoft.Testing.Platform 1.9.1），
+      # 發佈前用 MTP runner 跑測試把關；測試失敗就不發佈。
+      # 注意：MTP 模式不可加 --nologo（那是 VSTest 專用旗標，會被轉送到測試程式而中斷執行）。
+      - name: Test
+        run: dotnet test --solution SAM.sln -c Release -p:Platform=x64
+
+      # 兩個 WinExe 各自 self-contained 發佈到同一個 publish 資料夾，
+      # 共用的 .NET 10 runtime 會自動去重，使用者免裝 runtime 直接執行
+      - name: Publish SAM.Picker (self-contained, win-x64)
+        run: dotnet publish SAM.Picker/SAM.Picker.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -o publish
+
+      - name: Publish SAM.Game (self-contained, win-x64)
+        run: dotnet publish SAM.Game/SAM.Game.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -o publish
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $zip = "SteamAchievementManagerX-${{ github.ref_name }}-win-x64-self-contained.zip"
+          Compress-Archive -Path publish\* -DestinationPath $zip -Force
+          "ASSET=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Create / update GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
