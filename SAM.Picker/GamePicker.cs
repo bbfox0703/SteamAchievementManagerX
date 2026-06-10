@@ -64,6 +64,15 @@ namespace SAM.Picker
 
         private Color _BorderColor;
 
+        // The blank placeholder tile. An ImageList does not copy a source image
+        // into its native handle until that handle is realized, which happens
+        // lazily when the ListView creates its window. Adding this in the
+        // constructor therefore stores only a reference, so the bitmap must
+        // outlive the constructor: disposing it eagerly leaves the ImageList
+        // pointing at a freed GDI+ image and ListView handle creation throws
+        // "Parameter is not valid". Kept alive here and disposed with the form.
+        private Bitmap? _blankLogo;
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
 
@@ -119,16 +128,18 @@ namespace SAM.Picker
             this._PickerToolStrip.MouseDown += this.OnDragWindow;
             this._PickerStatusStrip.MouseDown += this.OnDragWindow;
 
-            using (Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height))
+            Bitmap blank = new(this._LogoImageList.ImageSize.Width, this._LogoImageList.ImageSize.Height);
+            using (var g = Graphics.FromImage(blank))
             {
-                using (var g = Graphics.FromImage(blank))
-                {
-                    g.Clear(Color.DimGray);
-                }
-
-                // ImageList stores its own copy; dispose the source to avoid a GDI leak.
-                this._LogoImageList.Images.Add("Blank", blank);
+                g.Clear(Color.DimGray);
             }
+
+            // The ImageList retains this source reference until its native handle
+            // is realized (lazily, when the ListView window is created), so the
+            // bitmap must stay alive past the constructor. It is disposed with the
+            // form in Dispose().
+            this._LogoImageList.Images.Add("Blank", blank);
+            this._blankLogo = blank;
 
             this._SteamClient = client;
             SystemEvents.UserPreferenceChanged += this.OnUserPreferenceChanged;

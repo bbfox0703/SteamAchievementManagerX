@@ -54,6 +54,10 @@
                     this._LogoImageList.Images.Clear();
                 }
 
+                // The blank placeholder source is owned by the form (the
+                // ImageList only ever held a reference to it), so dispose it here.
+                this._blankLogo?.Dispose();
+
                 components?.Dispose();
             }
             base.Dispose(disposing);
