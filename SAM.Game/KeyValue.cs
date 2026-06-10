@@ -228,7 +228,11 @@ namespace SAM.Game
 
         public bool ReadAsBinary(Stream input)
         {
-            return this.ReadAsBinary(input, 0);
+            // Only the top-level call may require the whole stream to be
+            // consumed. Nested sections finish at their own End byte (which is
+            // never EOF except for the very last one), so the recursion itself
+            // must not assert Position == Length.
+            return this.ReadAsBinary(input, 0) && input.Position == input.Length;
         }
 
         private bool ReadAsBinary(Stream input, int depth)
@@ -330,7 +334,7 @@ namespace SAM.Game
                 }
 
                 this.Valid = true;
-                return input.Position == input.Length;
+                return true;
             }
             catch (Exception ex)
             {

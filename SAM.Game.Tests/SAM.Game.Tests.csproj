@@ -11,6 +11,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\\SAM.Game\\StreamHelpers.cs" Link="StreamHelpers.cs" />
+    <Compile Include="..\\SAM.Game\\KeyValue.cs" Link="KeyValue.cs" />
+    <Compile Include="..\\SAM.Game\\KeyValueType.cs" Link="KeyValueType.cs" />
+    <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.5" />
