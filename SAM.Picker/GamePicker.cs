@@ -73,6 +73,12 @@ namespace SAM.Picker
         // "Parameter is not valid". Kept alive here and disposed with the form.
         private Bitmap? _blankLogo;
 
+        // Set when the form is closing so the logo worker stops re-arming itself
+        // via DownloadNextLogo; the CTS aborts any in-flight HTTP download so the
+        // form closes promptly instead of draining the whole logo queue first.
+        private volatile bool _closing;
+        private readonly System.Threading.CancellationTokenSource _logoCts = new();
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
 
@@ -413,6 +419,13 @@ namespace SAM.Picker
 
         private void OnDownloadList(object sender, RunWorkerCompletedEventArgs e)
         {
+            // The form is closing; don't touch controls or pop modal dialogs while
+            // Dispose is pumping messages to drain the workers.
+            if (this._closing == true)
+            {
+                return;
+            }
+
             if (e.Error != null || e.Cancelled == true)
             {
                 this.AddDefaultGames();
@@ -511,11 +524,13 @@ namespace SAM.Picker
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
         {
             var info = e.Argument as GameInfo;
-            if (info == null)
+            if (info == null || this._closing || this._logoCts.IsCancellationRequested)
             {
-                e.Result = null;
+                e.Cancel = true;
                 return;
             }
+
+            var token = this._logoCts.Token;
 
             // Try loading from cache first
             if (this._logoDownloader.TryLoadFromCache(info.Id, this._LogoImageList.ImageSize, out var cachedLogo))
@@ -526,9 +541,9 @@ namespace SAM.Picker
 
             // Download logo using the service
             Bitmap? logo = System.Threading.Tasks.Task.Run(async () =>
-                await this._logoDownloader.DownloadLogoAsync(info, this._LogoImageList.ImageSize, WinForms.HttpClientManager.Client)
+                await this._logoDownloader.DownloadLogoAsync(info, this._LogoImageList.ImageSize, WinForms.HttpClientManager.Client, token)
                     .ConfigureAwait(false)
-            ).GetAwaiter().GetResult();
+            , token).GetAwaiter().GetResult();
 
             e.Result = new LogoInfo(info.Id, logo);
         }
@@ -627,6 +642,13 @@ namespace SAM.Picker
 
         private void DownloadNextLogo()
         {
+            // Once the form is closing, stop pulling work from the queue so the
+            // Dispose wait can drain instead of endlessly re-arming the worker.
+            if (this._closing == true)
+            {
+                return;
+            }
+
             if (this._LogoWorker.IsBusy == true)
             {
                 return;

@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SAM.WinForms
@@ -17,16 +18,20 @@ namespace SAM.WinForms
         /// <param name="uri">The URI to download from</param>
         /// <param name="httpClient">The HttpClient instance to use</param>
         /// <param name="maxBytes">Maximum allowed response size in bytes</param>
+        /// <param name="cancellationToken">Token used to abort an in-flight request</param>
         /// <returns>A tuple containing the image data and content type</returns>
         /// <exception cref="HttpRequestException">Thrown when the response is too large or Content-Length is missing</exception>
         public static async Task<(byte[] Data, string ContentType)> DownloadImageDataAsync(
             Uri uri,
             HttpClient httpClient,
-            int maxBytes)
+            int maxBytes,
+            CancellationToken cancellationToken = default)
         {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await httpClient.SendAsync(
-                new HttpRequestMessage(HttpMethod.Get, uri),
-                HttpCompletionOption.ResponseHeadersRead);
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
 
             response.EnsureSuccessStatusCode();
 
@@ -38,7 +43,7 @@ namespace SAM.WinForms
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
-            using var stream = await response.Content.ReadAsStreamAsync();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             var data = ImageValidator.ReadStreamWithLimit(stream, maxBytes);
 
             return (data, contentType);
