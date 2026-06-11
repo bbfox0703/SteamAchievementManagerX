@@ -79,6 +79,9 @@ namespace SAM.Picker
         private volatile bool _closing;
         private readonly System.Threading.CancellationTokenSource _logoCts = new();
 
+        // Guards the one-time initial game-list load kicked off from OnShown.
+        private bool _initialGamesLoaded;
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
 
@@ -153,8 +156,6 @@ namespace SAM.Picker
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
 
-            this.AddGames();
-
             this.UpdateColors();
         }
 
@@ -163,6 +164,22 @@ namespace SAM.Picker
             base.OnHandleCreated(e);
             WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             WinForms.DwmWindowManager.ApplyRoundedCorners(this);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            // Kick off the initial game-list load only after the window handle
+            // exists. The list worker's first action is Control.BeginInvoke, which
+            // throws if it runs before the handle is created -- starting it from the
+            // constructor surfaced a spurious "Unable to load game list" error and
+            // fell back to the Spacewar-only default list.
+            if (this._initialGamesLoaded == false)
+            {
+                this._initialGamesLoaded = true;
+                this.AddGames();
+            }
         }
 
         protected override void OnSizeChanged(EventArgs e)
