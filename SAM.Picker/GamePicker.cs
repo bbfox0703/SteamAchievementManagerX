@@ -409,10 +409,10 @@ namespace SAM.Picker
             }));
             foreach (var kv in pairs)
             {
-                if (this._Games.ContainsKey(kv.Key) == true)
-                {
-                    continue;
-                }
+                // Don't read _Games here: this runs on the worker thread while the UI
+                // thread mutates the dictionary under _GamesLock. AddGame already
+                // re-checks for an existing key inside the lock, so the pre-check was
+                // both redundant and an unsynchronized read.
                 this.AddGame(kv.Key, kv.Value);
             }
         }
