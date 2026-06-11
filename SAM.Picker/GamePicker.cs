@@ -736,8 +736,17 @@ namespace SAM.Picker
         {
             lock (this._GamesLock)
             {
-                if (this._Games.ContainsKey(id) == true)
+                if (this._Games.TryGetValue(id, out var existing) == true)
                 {
+                    // Games loaded from usergames.xml only carry an id, so they start
+                    // with a null type that bypasses the demo/mod/junk filters. When
+                    // the master list arrives with a real type, backfill it (the
+                    // subsequent RefreshGames re-applies the filter).
+                    if (string.IsNullOrEmpty(existing.Type) == true &&
+                        string.IsNullOrEmpty(type) == false)
+                    {
+                        existing.Type = type;
+                    }
                     return;
                 }
 
