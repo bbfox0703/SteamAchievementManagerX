@@ -79,4 +79,24 @@ public class KeyValueTests
 
         Assert.False(kv.ReadAsBinary(stream));
     }
+
+    [Fact]
+    public void Indexer_ReturnsFirstMatch_ForDuplicateSiblingKeys()
+    {
+        // VDF permits duplicate sibling keys. The indexer must not throw (it used
+        // SingleOrDefault, which threw on duplicates and aborted schema parsing) and
+        // should return the first match.
+        var buffer = new List<byte>();
+        WriteSection(buffer, "root");
+        WriteInt32(buffer, "dup", 1);
+        WriteInt32(buffer, "dup", 2);
+        WriteEnd(buffer); // root
+        WriteEnd(buffer); // top-level
+
+        var kv = new KeyValue();
+        using var stream = new MemoryStream(buffer.ToArray());
+
+        Assert.True(kv.ReadAsBinary(stream));
+        Assert.Equal(1, kv["root"]["dup"].AsInteger(-1));
+    }
 }
