@@ -21,21 +21,30 @@
                 this._closing = true;
                 this._logoCts?.Cancel();
 
+                // Bound each wait: a worker may be blocked in a stalled network read
+                // that synchronous cancellation can't interrupt, so never spin here
+                // indefinitely. After the cap we proceed to dispose anyway -- the form
+                // closes, Application.Run returns, and the process exits, reclaiming
+                // the background thread.
+                var closeWait = System.Diagnostics.Stopwatch.StartNew();
                 if (this._LogoWorker != null && this._LogoWorker.IsBusy)
                 {
                     this._LogoWorker.CancelAsync();
-                    while (this._LogoWorker.IsBusy)
+                    while (this._LogoWorker.IsBusy && closeWait.ElapsedMilliseconds < 2000)
                     {
                         System.Windows.Forms.Application.DoEvents();
+                        System.Threading.Thread.Sleep(10);
                     }
                 }
 
                 if (this._ListWorker != null && this._ListWorker.IsBusy)
                 {
+                    closeWait.Restart();
                     this._ListWorker.CancelAsync();
-                    while (this._ListWorker.IsBusy)
+                    while (this._ListWorker.IsBusy && closeWait.ElapsedMilliseconds < 2000)
                     {
                         System.Windows.Forms.Application.DoEvents();
+                        System.Threading.Thread.Sleep(10);
                     }
                 }
 

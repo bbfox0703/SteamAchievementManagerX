@@ -182,6 +182,20 @@ namespace SAM.Picker
             }
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+
+            // The instant the user closes (e.g. the custom X), signal the logo worker
+            // to stop re-arming and abort any in-flight download, so the form closes
+            // promptly instead of appearing frozen while the icon queue drains.
+            if (e.Cancel == false)
+            {
+                this._closing = true;
+                this._logoCts?.Cancel();
+            }
+        }
+
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
@@ -426,6 +440,14 @@ namespace SAM.Picker
             }));
             foreach (var kv in pairs)
             {
+                // Bail out of the ownership scan if the form is closing; on a large
+                // library this loop (a Steam API call per app) is what would otherwise
+                // keep the close waiting.
+                if (this._closing == true)
+                {
+                    break;
+                }
+
                 // Don't read _Games here: this runs on the worker thread while the UI
                 // thread mutates the dictionary under _GamesLock. AddGame already
                 // re-checks for an existing key inside the lock, so the pre-check was

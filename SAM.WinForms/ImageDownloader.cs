@@ -44,9 +44,31 @@ namespace SAM.WinForms
             var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var data = ImageValidator.ReadStreamWithLimit(stream, maxBytes);
+            // Read the body with the token: HttpClient.Timeout does not cover the
+            // response stream under ResponseHeadersRead, and a synchronous read can't
+            // be cancelled -- a stalled connection would otherwise block forever and
+            // hang form close. This honors cancellation immediately.
+            var data = await ReadWithLimitAsync(stream, maxBytes, cancellationToken);
 
             return (data, contentType);
+        }
+
+        private static async Task<byte[]> ReadWithLimitAsync(Stream stream, int maxBytes, CancellationToken cancellationToken)
+        {
+            using var memory = new MemoryStream();
+            byte[] buffer = new byte[81920];
+            int total = 0;
+            int read;
+            while ((read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    throw new HttpRequestException("Response exceeded maximum allowed size");
+                }
+                memory.Write(buffer, 0, read);
+            }
+            return memory.ToArray();
         }
 
         /// <summary>
