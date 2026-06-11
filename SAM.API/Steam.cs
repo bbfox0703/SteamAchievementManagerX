@@ -160,6 +160,8 @@ namespace SAM.API
 
             IntPtr pathHandle = IntPtr.Zero;
             IntPtr binHandle = IntPtr.Zero;
+            IntPtr module = IntPtr.Zero;
+            bool loaded = false;
             try
             {
                 pathHandle = Native.AddDllDirectory(path);
@@ -174,7 +176,7 @@ namespace SAM.API
                     return false;
                 }
 
-                IntPtr module = Native.LoadLibraryEx(
+                module = Native.LoadLibraryEx(
                     libraryPath,
                     IntPtr.Zero,
                     Native.LoadLibrarySearchDefaultDirs | Native.LoadLibrarySearchUserDirs);
@@ -202,10 +204,22 @@ namespace SAM.API
                 }
 
                 _Handle = module;
+                loaded = true;
                 return true;
             }
             finally
             {
+                // If the module loaded but an export failed to resolve, free it: every
+                // return-false path below LoadLibraryEx left _Handle unset, so Unload()
+                // could not free it and each Load() retry leaked another module ref.
+                if (loaded == false && module != IntPtr.Zero)
+                {
+                    Native.FreeLibrary(module);
+                    _CallCreateInterface = null;
+                    _CallSteamBGetCallback = null;
+                    _CallSteamFreeLastCallback = null;
+                }
+
                 if (binHandle != IntPtr.Zero)
                 {
                     Native.RemoveDllDirectory(binHandle);
