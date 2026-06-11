@@ -124,7 +124,12 @@ namespace SAM.Game.Services
                         break;
 
                     default:
-                        throw new InvalidOperationException("invalid stat type");
+                        // Unknown / newer Steam stat type: skip this stat rather than
+                        // aborting the whole schema load. The stats callback that drives
+                        // this swallows exceptions, so throwing here would leave the UI
+                        // wedged on "Retrieving stat information..." with no diagnostic.
+                        SAM.API.DebugLogger.Log(_($"Skipping stat '{stat["name"].AsString("")}' with unsupported type {(int)type}"));
+                        break;
                 }
             }
 

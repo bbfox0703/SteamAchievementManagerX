@@ -333,31 +333,43 @@ namespace SAM.Game
 
         private bool LoadUserGameStatsSchema()
         {
-            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
-
-            var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
-
-            this._achievementDefinitions.Clear();
-            this._statDefinitions.Clear();
-
-            if (!schemaManager.LoadSchema(out var achievements, out var stats))
+            try
             {
+                var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
+
+                var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
+
+                this._achievementDefinitions.Clear();
+                this._statDefinitions.Clear();
+
+                if (!schemaManager.LoadSchema(out var achievements, out var stats))
+                {
+                    return false;
+                }
+
+                this._achievementDefinitions.AddRange(achievements);
+                this._statDefinitions.AddRange(stats);
+
+                // Initialize data services with loaded definitions
+                this._achievementDataService = new Services.AchievementDataService(
+                    this._SteamClient,
+                    this._achievementDefinitions);
+
+                this._statisticsDataService = new Services.StatisticsDataService(
+                    this._SteamClient,
+                    this._statDefinitions);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Any parse error must not escape: this runs inside a Steam stats
+                // callback whose dispatcher swallows exceptions, which would leave
+                // the UI wedged with input never re-enabled. Fail to the caller's
+                // "Failed to load schema." path instead.
+                DebugLogger.LogError("Failed to load user game stats schema", ex);
                 return false;
             }
-
-            this._achievementDefinitions.AddRange(achievements);
-            this._statDefinitions.AddRange(stats);
-
-            // Initialize data services with loaded definitions
-            this._achievementDataService = new Services.AchievementDataService(
-                this._SteamClient,
-                this._achievementDefinitions);
-
-            this._statisticsDataService = new Services.StatisticsDataService(
-                this._SteamClient,
-                this._statDefinitions);
-
-            return true;
         }
 
         private void OnUserStatsReceived(APITypes.UserStatsReceived param)
