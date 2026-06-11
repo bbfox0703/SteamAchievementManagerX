@@ -25,6 +25,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace SAM.API
 {
@@ -80,23 +81,43 @@ namespace SAM.API
                 return;
             }
 
-            try
+            var path = GetLogFilePath();
+            if (path == null)
             {
-                var path = GetLogFilePath();
-                if (path == null)
-                {
-                    return;
-                }
-
-                lock (_lockObject)
-                {
-                    File.AppendAllText(path, formattedMessage + Environment.NewLine);
-                }
+                return;
             }
-            catch
+
+            lock (_lockObject)
             {
-                // Silently fail - logging should never break the application
-                _fileLoggingDisabled = true;
+                // SAM.Picker and SAM.Game are separate processes writing the same
+                // dated log file, so open with FileShare.ReadWrite to avoid colliding
+                // on each other's appends. Treat a sharing/lock failure as transient:
+                // retry briefly, then drop just this line. Never latch file logging
+                // off for it -- only a permanent error (no logs dir) should do that.
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    try
+                    {
+                        using var stream = new FileStream(
+                            path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                        using var writer = new StreamWriter(stream);
+                        writer.WriteLine(formattedMessage);
+                        return;
+                    }
+                    catch (IOException)
+                    {
+                        Thread.Sleep(2); // sharing violation / transient lock; retry
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        Thread.Sleep(2); // transient lock contention; retry
+                    }
+                    catch
+                    {
+                        // Unexpected error: drop this line but keep logging enabled.
+                        return;
+                    }
+                }
             }
         }
 
