@@ -1086,6 +1086,14 @@ namespace SAM.Game
             SetThreadExecutionState(ExecutionState.ES_CONTINUOUS | ExecutionState.ES_DISPLAY_REQUIRED | ExecutionState.ES_SYSTEM_REQUIRED);
         }
 
+        private void AllowSleep()
+        {
+            // ES_CONTINUOUS sets a persistent state, so the display/system-required
+            // flags stay in effect until explicitly cleared. Pass ES_CONTINUOUS on
+            // its own to drop them and let the machine sleep again.
+            SetThreadExecutionState(ExecutionState.ES_CONTINUOUS);
+        }
+
         private bool IsForeground()
         {
             return this == Form.ActiveForm;
@@ -1111,6 +1119,7 @@ namespace SAM.Game
             else
             {
                 _idleTimer.Stop();
+                AllowSleep();
                 _autoMouseMoveButton.Text = "Start Auto Mouse Move";
             }
         }
@@ -1298,6 +1307,10 @@ namespace SAM.Game
         {
             if (disposing)
             {
+                // Clear any sleep/display inhibition this form set via the
+                // auto-mouse-move feature so it doesn't outlive the window.
+                AllowSleep();
+
                 try
                 {
                     _iconDownloadCts.Cancel();
