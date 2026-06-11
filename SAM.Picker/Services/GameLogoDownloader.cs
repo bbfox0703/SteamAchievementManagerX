@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using SAM.WinForms;
 using static SAM.API.Utilities.InvariantShorthand;
@@ -99,8 +100,9 @@ namespace SAM.Picker.Services
         /// <param name="info">The game info</param>
         /// <param name="targetSize">Target image size for resizing</param>
         /// <param name="httpClient">HTTP client for downloading</param>
+        /// <param name="cancellationToken">Token used to abort an in-flight download</param>
         /// <returns>Downloaded and resized logo bitmap, or null if download failed</returns>
-        public async Task<Bitmap?> DownloadLogoAsync(GameInfo info, Size targetSize, System.Net.Http.HttpClient httpClient)
+        public async Task<Bitmap?> DownloadLogoAsync(GameInfo info, Size targetSize, System.Net.Http.HttpClient httpClient, CancellationToken cancellationToken = default)
         {
             List<string> urls = new() { info.ImageUrl };
             var fallbackUrl = _($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{info.Id}/header.jpg");
@@ -117,6 +119,8 @@ namespace SAM.Picker.Services
 
             foreach (var url in urls)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 lock (this._logoLock)
                 {
                     this._logosAttempted.Add(url);
@@ -132,7 +136,8 @@ namespace SAM.Picker.Services
                     var (data, contentType) = await ImageDownloader.DownloadImageDataAsync(
                         uri,
                         httpClient,
-                        MaxLogoBytes);
+                        MaxLogoBytes,
+                        cancellationToken);
 
                     if (!ImageValidator.IsImageContentType(contentType))
                     {
@@ -159,6 +164,12 @@ namespace SAM.Picker.Services
 
                         return bitmap;
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Cancellation (e.g. the form is closing) should abort the whole
+                    // download, not silently fall through to the next fallback URL.
+                    throw;
                 }
                 catch (Exception)
                 {

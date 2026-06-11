@@ -47,7 +47,10 @@ namespace SAM.Game
                     return _Invalid;
                 }
 
-                var child = this.Children.SingleOrDefault(
+                // VDF permits duplicate sibling keys, so match the first rather than
+                // using SingleOrDefault (which throws on duplicates and would abort
+                // schema parsing). This mirrors Valve's "first match wins" lookup.
+                var child = this.Children.FirstOrDefault(
                     c => string.Compare(c.Name, key, StringComparison.InvariantCultureIgnoreCase) == 0);
 
                 if (child == null)

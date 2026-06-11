@@ -15,6 +15,12 @@
         {
             if (disposing)
             {
+                // Signal background logo work to stop re-arming and abort any
+                // in-flight HTTP request, so the waits below drain promptly
+                // instead of downloading the entire remaining logo queue first.
+                this._closing = true;
+                this._logoCts?.Cancel();
+
                 if (this._LogoWorker != null && this._LogoWorker.IsBusy)
                 {
                     this._LogoWorker.CancelAsync();
@@ -35,6 +41,7 @@
 
                 this._LogoWorker?.Dispose();
                 this._ListWorker?.Dispose();
+                this._logoCts?.Dispose();
 
                 // Unsubscribe from events to prevent memory leaks
                 Microsoft.Win32.SystemEvents.UserPreferenceChanged -= this.OnUserPreferenceChanged;

@@ -333,31 +333,43 @@ namespace SAM.Game
 
         private bool LoadUserGameStatsSchema()
         {
-            var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
-
-            var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
-
-            this._achievementDefinitions.Clear();
-            this._statDefinitions.Clear();
-
-            if (!schemaManager.LoadSchema(out var achievements, out var stats))
+            try
             {
+                var currentLanguage = LanguageHelper.GetCurrentLanguage(_LanguageComboBox, this._SteamClient.SteamApps008);
+
+                var schemaManager = new Services.SchemaManager(this._GameId, currentLanguage);
+
+                this._achievementDefinitions.Clear();
+                this._statDefinitions.Clear();
+
+                if (!schemaManager.LoadSchema(out var achievements, out var stats))
+                {
+                    return false;
+                }
+
+                this._achievementDefinitions.AddRange(achievements);
+                this._statDefinitions.AddRange(stats);
+
+                // Initialize data services with loaded definitions
+                this._achievementDataService = new Services.AchievementDataService(
+                    this._SteamClient,
+                    this._achievementDefinitions);
+
+                this._statisticsDataService = new Services.StatisticsDataService(
+                    this._SteamClient,
+                    this._statDefinitions);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Any parse error must not escape: this runs inside a Steam stats
+                // callback whose dispatcher swallows exceptions, which would leave
+                // the UI wedged with input never re-enabled. Fail to the caller's
+                // "Failed to load schema." path instead.
+                DebugLogger.LogError("Failed to load user game stats schema", ex);
                 return false;
             }
-
-            this._achievementDefinitions.AddRange(achievements);
-            this._statDefinitions.AddRange(stats);
-
-            // Initialize data services with loaded definitions
-            this._achievementDataService = new Services.AchievementDataService(
-                this._SteamClient,
-                this._achievementDefinitions);
-
-            this._statisticsDataService = new Services.StatisticsDataService(
-                this._SteamClient,
-                this._statDefinitions);
-
-            return true;
         }
 
         private void OnUserStatsReceived(APITypes.UserStatsReceived param)
@@ -742,29 +754,24 @@ namespace SAM.Game
             int achievements = this.StoreAchievements(silent);
             if (achievements < 0)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                // Resync from Steam even in silent/timer mode. StoreAchievements has
+                // already applied the optimistic IsAchieved updates, so without a
+                // refresh the state stays desynced and the timer, seeing no remaining
+                // diff between Checked and IsAchieved, never retries the failed store.
+                this.RefreshStats();
                 return;
             }
 
             int stats = this.StoreStatistics(silent);
             if (stats < 0)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                this.RefreshStats();
                 return;
             }
 
             if (this.Store() == false)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                this.RefreshStats();
                 return;
             }
 
@@ -1074,6 +1081,14 @@ namespace SAM.Game
             SetThreadExecutionState(ExecutionState.ES_CONTINUOUS | ExecutionState.ES_DISPLAY_REQUIRED | ExecutionState.ES_SYSTEM_REQUIRED);
         }
 
+        private void AllowSleep()
+        {
+            // ES_CONTINUOUS sets a persistent state, so the display/system-required
+            // flags stay in effect until explicitly cleared. Pass ES_CONTINUOUS on
+            // its own to drop them and let the machine sleep again.
+            SetThreadExecutionState(ExecutionState.ES_CONTINUOUS);
+        }
+
         private bool IsForeground()
         {
             return this == Form.ActiveForm;
@@ -1099,6 +1114,7 @@ namespace SAM.Game
             else
             {
                 _idleTimer.Stop();
+                AllowSleep();
                 _autoMouseMoveButton.Text = "Start Auto Mouse Move";
             }
         }
@@ -1286,6 +1302,10 @@ namespace SAM.Game
         {
             if (disposing)
             {
+                // Clear any sleep/display inhibition this form set via the
+                // auto-mouse-move feature so it doesn't outlive the window.
+                AllowSleep();
+
                 try
                 {
                     _iconDownloadCts.Cancel();

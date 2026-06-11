@@ -73,6 +73,15 @@ namespace SAM.Picker
         // "Parameter is not valid". Kept alive here and disposed with the form.
         private Bitmap? _blankLogo;
 
+        // Set when the form is closing so the logo worker stops re-arming itself
+        // via DownloadNextLogo; the CTS aborts any in-flight HTTP download so the
+        // form closes promptly instead of draining the whole logo queue first.
+        private volatile bool _closing;
+        private readonly System.Threading.CancellationTokenSource _logoCts = new();
+
+        // Guards the one-time initial game-list load kicked off from OnShown.
+        private bool _initialGamesLoaded;
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
 
@@ -147,8 +156,6 @@ namespace SAM.Picker
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
 
-            this.AddGames();
-
             this.UpdateColors();
         }
 
@@ -157,6 +164,22 @@ namespace SAM.Picker
             base.OnHandleCreated(e);
             WinForms.DwmWindowManager.ApplyMicaEffect(this.Handle, !WinForms.WindowsThemeDetector.IsLightTheme());
             WinForms.DwmWindowManager.ApplyRoundedCorners(this);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            // Kick off the initial game-list load only after the window handle
+            // exists. The list worker's first action is Control.BeginInvoke, which
+            // throws if it runs before the handle is created -- starting it from the
+            // constructor surfaced a spurious "Unable to load game list" error and
+            // fell back to the Spacewar-only default list.
+            if (this._initialGamesLoaded == false)
+            {
+                this._initialGamesLoaded = true;
+                this.AddGames();
+            }
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -403,16 +426,23 @@ namespace SAM.Picker
             }));
             foreach (var kv in pairs)
             {
-                if (this._Games.ContainsKey(kv.Key) == true)
-                {
-                    continue;
-                }
+                // Don't read _Games here: this runs on the worker thread while the UI
+                // thread mutates the dictionary under _GamesLock. AddGame already
+                // re-checks for an existing key inside the lock, so the pre-check was
+                // both redundant and an unsynchronized read.
                 this.AddGame(kv.Key, kv.Value);
             }
         }
 
         private void OnDownloadList(object sender, RunWorkerCompletedEventArgs e)
         {
+            // The form is closing; don't touch controls or pop modal dialogs while
+            // Dispose is pumping messages to drain the workers.
+            if (this._closing == true)
+            {
+                return;
+            }
+
             if (e.Error != null || e.Cancelled == true)
             {
                 this.AddDefaultGames();
@@ -511,11 +541,13 @@ namespace SAM.Picker
         private void DoDownloadLogo(object sender, DoWorkEventArgs e)
         {
             var info = e.Argument as GameInfo;
-            if (info == null)
+            if (info == null || this._closing || this._logoCts.IsCancellationRequested)
             {
-                e.Result = null;
+                e.Cancel = true;
                 return;
             }
+
+            var token = this._logoCts.Token;
 
             // Try loading from cache first
             if (this._logoDownloader.TryLoadFromCache(info.Id, this._LogoImageList.ImageSize, out var cachedLogo))
@@ -526,9 +558,9 @@ namespace SAM.Picker
 
             // Download logo using the service
             Bitmap? logo = System.Threading.Tasks.Task.Run(async () =>
-                await this._logoDownloader.DownloadLogoAsync(info, this._LogoImageList.ImageSize, WinForms.HttpClientManager.Client)
+                await this._logoDownloader.DownloadLogoAsync(info, this._LogoImageList.ImageSize, WinForms.HttpClientManager.Client, token)
                     .ConfigureAwait(false)
-            ).GetAwaiter().GetResult();
+            , token).GetAwaiter().GetResult();
 
             e.Result = new LogoInfo(info.Id, logo);
         }
@@ -627,6 +659,13 @@ namespace SAM.Picker
 
         private void DownloadNextLogo()
         {
+            // Once the form is closing, stop pulling work from the queue so the
+            // Dispose wait can drain instead of endlessly re-arming the worker.
+            if (this._closing == true)
+            {
+                return;
+            }
+
             if (this._LogoWorker.IsBusy == true)
             {
                 return;
@@ -697,8 +736,17 @@ namespace SAM.Picker
         {
             lock (this._GamesLock)
             {
-                if (this._Games.ContainsKey(id) == true)
+                if (this._Games.TryGetValue(id, out var existing) == true)
                 {
+                    // Games loaded from usergames.xml only carry an id, so they start
+                    // with a null type that bypasses the demo/mod/junk filters. When
+                    // the master list arrives with a real type, backfill it (the
+                    // subsequent RefreshGames re-applies the filter).
+                    if (string.IsNullOrEmpty(existing.Type) == true &&
+                        string.IsNullOrEmpty(type) == false)
+                    {
+                        existing.Type = type;
+                    }
                     return;
                 }
 

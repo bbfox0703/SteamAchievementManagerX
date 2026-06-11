@@ -16,6 +16,20 @@ namespace SAM.WinForms
         private static readonly ConditionalWeakTable<TabControl, ColorInfo> _tabControlColors = new();
         private static readonly ConditionalWeakTable<ListView, ColorInfo> _listViewColors = new();
 
+        // Shared, immutable StringFormats reused across owner-draw paints. Caching
+        // them avoids allocating (and leaking, since they were never disposed) a new
+        // StringFormat on every column-header / tab repaint.
+        private static readonly StringFormat _headerStringFormat = new()
+        {
+            Alignment = StringAlignment.Near,
+            LineAlignment = StringAlignment.Center,
+        };
+        private static readonly StringFormat _tabStringFormat = new()
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+        };
+
         /// <summary>
         /// Custom color table for dark/light mode ToolStrip rendering.
         /// </summary>
@@ -464,14 +478,9 @@ namespace SAM.WinForms
             // Draw text
             var bounds = e.Bounds;
             bounds.Inflate(-2, 0);
-            StringFormat format = new()
-            {
-                Alignment = StringAlignment.Near,
-                LineAlignment = StringAlignment.Center,
-            };
             var text = e.Header?.Text ?? string.Empty;
             var font = list.Font ?? SystemFonts.DefaultFont;
-            e.Graphics.DrawString(text, font, fore, bounds, format);
+            e.Graphics.DrawString(text, font, fore, bounds, _headerStringFormat);
 
             // Draw grid line (separator) on the right edge of the column header
             // Use a slightly darker/lighter color based on the background
@@ -567,13 +576,8 @@ namespace SAM.WinForms
 
             var bounds = e.Bounds;
             bounds.Inflate(-2, -2);
-            StringFormat format = new()
-            {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center,
-            };
             var font = e.Font ?? SystemFonts.DefaultFont;
-            e.Graphics.DrawString(page.Text ?? string.Empty, font, fore, bounds, format);
+            e.Graphics.DrawString(page.Text ?? string.Empty, font, fore, bounds, _tabStringFormat);
         }
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
