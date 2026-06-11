@@ -15,6 +15,7 @@
     <Compile Include="..\\SAM.Picker\\GameImageUrlResolver.cs" Link="GameImageUrlResolver.cs" />
     <Compile Include="..\\SAM.Picker\\BitmapExtensions.cs" Link="BitmapExtensions.cs" />
     <ProjectReference Include="..\\SAM.API\\SAM.API.csproj" />
+    <ProjectReference Include="..\\SAM.WinForms\\SAM.WinForms.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.5" />
