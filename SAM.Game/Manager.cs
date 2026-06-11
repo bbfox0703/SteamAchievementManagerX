@@ -754,29 +754,24 @@ namespace SAM.Game
             int achievements = this.StoreAchievements(silent);
             if (achievements < 0)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                // Resync from Steam even in silent/timer mode. StoreAchievements has
+                // already applied the optimistic IsAchieved updates, so without a
+                // refresh the state stays desynced and the timer, seeing no remaining
+                // diff between Checked and IsAchieved, never retries the failed store.
+                this.RefreshStats();
                 return;
             }
 
             int stats = this.StoreStatistics(silent);
             if (stats < 0)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                this.RefreshStats();
                 return;
             }
 
             if (this.Store() == false)
             {
-                if (!silent)
-                {
-                    this.RefreshStats();
-                }
+                this.RefreshStats();
                 return;
             }
 
