@@ -85,7 +85,7 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 5. **Advanced Search**: Filter achievements by name/description
 6. **Icon/Game Caching**: Faster loading with local cache
 7. **Windows 11 Theme**: Dark/Light mode with Mica effects
-8. **Security Improvements**: DLL signature validation, path traversal prevention
+8. **Security Improvements**: Scoped Steam DLL loading, path traversal prevention
 9. **Code Quality**: Improved error handling and reduced vulnerabilities
 
 ---

@@ -8,7 +8,7 @@ The solution consists of 4 main projects + 2 test projects:
 - Provides managed C# wrappers around native Steam Client APIs
 - Target framework: `net10.0-windows` (Windows-only)
 - Loads `steamclient64.dll` dynamically from Steam install directory
-- Security: Validates DLL signature against Valve Corporation's certificate
+- Dependency search excludes PATH and the current directory (`AddDllDirectory` + `LoadLibraryEx` search flags); there is no signature check
 - Uses unsafe code for native interop with Steam interfaces
 
 **SAM.Picker** - Game Selection Launcher (WinForms)
@@ -50,12 +50,9 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 ## Steam API Integration
 
 **Initialization:**
-1. Loads `steamclient64.dll` from registry-discovered Steam install path (see `SAM.API\Steam.cs`)
-2. Verifies DLL digital signature matches Valve Corporation
-3. Creates Steam pipe and connects via `SteamClient018` interface
-4. Sets `SteamAppId` environment variable to trick Steam into game context
-5. For Picker: AppID = 0 (general Steam client)
-6. For Game: AppID = specific game passed via command-line
+1. Sets `SteamAppId` environment variable to put Steam into the game's context (Picker: AppID = 0, the general Steam client; Game: the AppID passed on the command line)
+2. Loads `steamclient64.dll` from the registry-discovered Steam install path (see `SAM.API\Steam.cs`)
+3. Creates the `SteamClient018` interface, a Steam pipe, and connects to the global user
 
 **Key Steam Interfaces:**
 - `SteamClient018`: Client initialization
