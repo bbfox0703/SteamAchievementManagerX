@@ -11,7 +11,7 @@
 1. Add interface definition in `SAM.API\Interfaces\`
 2. Create wrapper in `SAM.API\Wrappers\`
 3. Inherit from `NativeWrapper<TInterface>`
-4. Use `Call<TDelegate>(functionIndex, args)` pattern
+4. Invoke native functions through the vtable struct: `this.Call<TReturn, TDelegate>(this.Functions.Name, this.ObjectAddress, ...)`, or `Call<TDelegate>(...)` for void functions
 
 ## Working with VDF Files
 
