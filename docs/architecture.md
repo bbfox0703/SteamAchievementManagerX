@@ -58,7 +58,9 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 - `SteamClient018`: Client initialization
 - `SteamUserStats013`: Achievement get/set operations, stat modifications
 - `SteamApps008`: Game ownership checks, language queries
-- `SteamUtils010`: General utilities
+- `SteamApps001`: App metadata (`GetAppData`)
+- `SteamUser012`: Login state and Steam ID
+- `SteamUtils005`: General utilities
 
 **Native Wrapper Pattern:**
 - Base class: `NativeWrapper<T>` uses generics to wrap Steam interfaces
