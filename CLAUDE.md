@@ -47,7 +47,7 @@ dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj -p:Platform=x64 -- --filter
 `global.json` (`test.runner = Microsoft.Testing.Platform`). On the .NET 10 SDK the
 legacy VSTest path is gone. Do NOT add `--nologo` (a VSTest-only flag that MTP
 forwards to the test app and breaks the run). The test projects rely on `xunit.v3`
-to bring `Microsoft.Testing.Platform` transitively (1.9.1) — do not re-add explicit
+to bring a compatible `Microsoft.Testing.Platform` 1.x transitively — do not re-add explicit
 `Microsoft.Testing.Platform*` or `Microsoft.NET.Test.Sdk` references, which pin an
 incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.DisplayAsync`.
 
