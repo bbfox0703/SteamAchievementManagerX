@@ -55,4 +55,4 @@ SAM.API uses `unsafe` code blocks for:
 - Fast string conversion (UTF-8 ↔ UTF-16)
 - Direct memory access for VTable traversal
 
-**Important:** Always enable `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` in the `.csproj` when working with SAM.API.
+`<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` is set in `SAM.API.csproj` and both test projects; a new project needs it only if it contains `unsafe` code itself.
