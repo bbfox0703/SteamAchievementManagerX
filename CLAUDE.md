@@ -83,8 +83,7 @@ incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.Display
 4. **VDF Binary vs Text**: Steam's VDF files come in two formats. This codebase uses binary format for schemas.
 5. **Achievement Permissions**: Some achievements are server-authoritative and cannot be unlocked via SAM.
 6. **Callback Timing**: Steam callbacks arrive asynchronously through `Client.RunCallbacks()`. Check the callback struct's `Result` field before using its data (`UserStatsReceived.Result == 1` means OK; see `OnUserStatsReceived` in `SAM.Game\Manager.cs`), and handle failures inside the handler, because the dispatcher logs and swallows exceptions.
-7. **Path Separators**: Use `Path.Combine()` for cross-platform compatibility, even though this is Windows-only (future-proofing).
-8. **Unsafe Code**: SAM.API uses `unsafe` code for native interop; `<AllowUnsafeBlocks>` is already set in SAM.API and both test projects. A new project needs it only if it contains `unsafe` code itself.
+7. **Unsafe Code**: SAM.API uses `unsafe` code for native interop; `<AllowUnsafeBlocks>` is already set in SAM.API and both test projects. A new project needs it only if it contains `unsafe` code itself.
 
 ## docs/ Directory
 
