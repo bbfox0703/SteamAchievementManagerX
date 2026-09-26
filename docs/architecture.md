@@ -76,7 +76,7 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Achievement System Flow
 
-1. **Schema Loading** (`SAM.Game\Manager.cs`):
+1. **Schema Loading** (`SAM.Game\Services\SchemaManager.cs`, called from `Manager.LoadUserGameStatsSchema`):
    - Load from `Steam\appcache\stats\UserGameStatsSchema_{appId}.bin`
    - Parse with `KeyValue.cs` VDF binary reader
    - Schema contains: achievement definitions, stat definitions, localized strings
@@ -98,9 +98,9 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Multi-Language Support
 
-**Implementation** (`SAM.Game\Manager.cs`):
-- Language obtained from `SteamApps008.GetCurrentGameLanguage()`
-- Localization fallback chain in `GetLocalizedString()`:
+**Implementation** (`SAM.Game\Services\SchemaManager.cs`, `SAM.WinForms\LanguageHelper.cs`):
+- Language comes from `_LanguageComboBox`, falling back to `SteamApps008.GetCurrentGameLanguage()` (`LanguageHelper.GetCurrentLanguage()`)
+- Localization fallback chain in `SchemaManager.GetLocalizedString()`:
   1. Try requested language from VDF schema
   2. Fall back to English if not found
   3. Fall back to raw value if English missing
