@@ -24,7 +24,7 @@
 
 - Tests use xUnit framework
 - Mock Steam API interactions where possible
-- Test projects have `InternalsVisibleTo` access for unit testing
+- `SAM.API` exposes its internals to `SAM.Picker.Tests` via `InternalsVisibleTo`
 
 Test commands (whole solution, single project, single test) live in `CLAUDE.md` -> Build Commands. Tests run under Microsoft.Testing.Platform, so single tests are selected with xunit.v3 filters after `--` (e.g. `-- --filter-method "*TestName*"`).
 
