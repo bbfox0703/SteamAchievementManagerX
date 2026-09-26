@@ -127,12 +127,12 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Countdown Timer Feature
 
-**Location**: `SAM.Game\Manager.cs:1275-1468`
+**Location**: timer handlers in `SAM.Game\Manager.cs` (`_AddTimer*`, `_submitAchievementsTimer_Tick`, `_idleTimer_Tick`); per-achievement countdown state in `SAM.Game\Services\CountdownTimerManager.cs`
 
 **Components:**
 - `_submitAchievementsTimer`: Main timer (1-second tick)
 - `_idleTimer`: Prevents system sleep during countdown
-- `_achievementCounters`: Dictionary<string, int> tracking countdown per achievement
+- `CountdownTimerManager._achievementCounters`: Dictionary<string, int> tracking countdown per achievement
 
 **Workflow:**
 1. User selects achievements in ListView
