@@ -65,11 +65,14 @@ incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.Display
 | `SAM.API\Steam.cs` | Native DLL loading (absolute path from HKLM `Software\Valve\Steam`, scoped via `AddDllDirectory` + `LoadLibrarySearchUserDirs`; no Authenticode/signature check) |
 | `SAM.API\NativeWrapper.cs` | Base class for Steam API wrappers |
 | `SAM.Game\KeyValue.cs` | VDF binary parser (critical for schema reading) |
-| `SAM.Picker\GamePicker.cs` | Game selection UI (1200+ lines) |
-| `SAM.Game\Manager.cs` | Achievement manager UI (1500+ lines) |
+| `SAM.Picker\GamePicker.cs` | Game selection UI |
+| `SAM.Picker\Services\` | Logo download queue, game list filtering, launching SAM.Game |
+| `SAM.Game\Manager.cs` | Achievement manager UI |
+| `SAM.Game\Services\` | Schema loading, achievement/stat data, icon cache, countdown timers |
 | `SAM.Game\Stats\AchievementInfo.cs` | Runtime achievement state |
 | `SAM.Game\Stats\AchievementDefinition.cs` | Schema definition |
 | `SAM.WinForms\ThemeHelper.cs` | Windows 11-aware theme engine |
+| `SAM.WinForms\HttpClientManager.cs` | Shared `HttpClient` used by all Picker and Game downloads |
 | `SAM.Picker\ImageUrlValidator.cs` | URL sanitization |
 
 ## Common Pitfalls
