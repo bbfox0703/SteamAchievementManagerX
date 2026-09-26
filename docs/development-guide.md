@@ -30,6 +30,6 @@ Test commands (whole solution, single project, single test) live in `CLAUDE.md` 
 
 ## Debugging Steam Integration
 
-- Enable debug logging in `SAM.API\Client.cs`
+- Logging: `SAM.API\DebugLogger.cs` writes to `logs\sam_<yyyyMMdd>.log` beside the executable (`FileLoggingEnabled`, on by default). `DebugLogger.Log(...)` calls compile only in Debug builds; `LogWarning`/`LogError`/`LogAlways` also run in Release
 - Check Steam logs: `Steam\logs\` directory
 - Verify schema files exist: `Steam\appcache\stats\UserGameStatsSchema_{appId}.bin`
