@@ -26,16 +26,7 @@
 - Mock Steam API interactions where possible
 - Test projects have `InternalsVisibleTo` access for unit testing
 
-**Run all tests:**
-```bash
-dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj -p:Platform=x64
-dotnet test SAM.Game.Tests/SAM.Game.Tests.csproj -p:Platform=x64
-```
-
-**Run a single test by name:**
-```bash
-dotnet test SAM.Picker.Tests/SAM.Picker.Tests.csproj --filter "FullyQualifiedName~TestName" -p:Platform=x64
-```
+Test commands (whole solution, single project, single test) live in `CLAUDE.md` -> Build Commands. Tests run under Microsoft.Testing.Platform, so single tests are selected with xunit.v3 filters after `--` (e.g. `-- --filter-method "*TestName*"`).
 
 ## Debugging Steam Integration
 
