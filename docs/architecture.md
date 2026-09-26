@@ -8,7 +8,7 @@ The solution consists of 4 main projects + 2 test projects:
 - Provides managed C# wrappers around native Steam Client APIs
 - Target framework: `net10.0-windows` (Windows-only)
 - Loads `steamclient64.dll` dynamically from Steam install directory
-- Security: Validates DLL signature against Valve Corporation's certificate
+- Dependency search excludes PATH and the current directory (`AddDllDirectory` + `LoadLibraryEx` search flags); there is no signature check
 - Uses unsafe code for native interop with Steam interfaces
 
 **SAM.Picker** - Game Selection Launcher (WinForms)
@@ -50,18 +50,17 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 ## Steam API Integration
 
 **Initialization:**
-1. Loads `steamclient64.dll` from registry-discovered Steam install path (see `SAM.API\Steam.cs`)
-2. Verifies DLL digital signature matches Valve Corporation
-3. Creates Steam pipe and connects via `SteamClient018` interface
-4. Sets `SteamAppId` environment variable to trick Steam into game context
-5. For Picker: AppID = 0 (general Steam client)
-6. For Game: AppID = specific game passed via command-line
+1. Sets `SteamAppId` environment variable to put Steam into the game's context (Picker: AppID = 0, the general Steam client; Game: the AppID passed on the command line)
+2. Loads `steamclient64.dll` from the registry-discovered Steam install path (see `SAM.API\Steam.cs`)
+3. Creates the `SteamClient018` interface, a Steam pipe, and connects to the global user
 
 **Key Steam Interfaces:**
 - `SteamClient018`: Client initialization
 - `SteamUserStats013`: Achievement get/set operations, stat modifications
 - `SteamApps008`: Game ownership checks, language queries
-- `SteamUtils010`: General utilities
+- `SteamApps001`: App metadata (`GetAppData`)
+- `SteamUser012`: Login state and Steam ID
+- `SteamUtils005`: General utilities
 
 **Native Wrapper Pattern:**
 - Base class: `NativeWrapper<T>` uses generics to wrap Steam interfaces
@@ -77,7 +76,7 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Achievement System Flow
 
-1. **Schema Loading** (`SAM.Game\Manager.cs`):
+1. **Schema Loading** (`SAM.Game\Services\SchemaManager.cs`, called from `Manager.LoadUserGameStatsSchema`):
    - Load from `Steam\appcache\stats\UserGameStatsSchema_{appId}.bin`
    - Parse with `KeyValue.cs` VDF binary reader
    - Schema contains: achievement definitions, stat definitions, localized strings
@@ -99,9 +98,9 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Multi-Language Support
 
-**Implementation** (`SAM.Game\Manager.cs`):
-- Language obtained from `SteamApps008.GetCurrentGameLanguage()`
-- Localization fallback chain in `GetLocalizedString()`:
+**Implementation** (`SAM.Game\Services\SchemaManager.cs`, `SAM.WinForms\LanguageHelper.cs`):
+- Language comes from `_LanguageComboBox`, falling back to `SteamApps008.GetCurrentGameLanguage()` (`LanguageHelper.GetCurrentLanguage()`)
+- Localization fallback chain in `SchemaManager.GetLocalizedString()`:
   1. Try requested language from VDF schema
   2. Fall back to English if not found
   3. Fall back to raw value if English missing
@@ -130,12 +129,12 @@ SAM.Picker.exe ──┬──> SAM.API (Steam wrapper)
 
 ## Countdown Timer Feature
 
-**Location**: `SAM.Game\Manager.cs:1275-1468`
+**Location**: timer handlers in `SAM.Game\Manager.cs` (`_AddTimer*`, `_submitAchievementsTimer_Tick`, `_idleTimer_Tick`); per-achievement countdown state in `SAM.Game\Services\CountdownTimerManager.cs`
 
 **Components:**
 - `_submitAchievementsTimer`: Main timer (1-second tick)
 - `_idleTimer`: Prevents system sleep during countdown
-- `_achievementCounters`: Dictionary<string, int> tracking countdown per achievement
+- `CountdownTimerManager._achievementCounters`: Dictionary<string, int> tracking countdown per achievement
 
 **Workflow:**
 1. User selects achievements in ListView

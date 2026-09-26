@@ -5,22 +5,14 @@
 ### 🔴 Known Remaining Issues (Requires Fixing)
 
 1. **God Classes** (MEDIUM PRIORITY)
-   - `SAM.Game\Manager.cs` (1749 lines) - handles UI, network, Steam API, file I/O, timers
-   - `SAM.Picker\GamePicker.cs` (1234 lines) - similar multiple responsibilities
+   - `SAM.Game\Manager.cs` and `SAM.Picker\GamePicker.cs` still combine UI with Steam API calls and orchestration
+   - Schema, icon, countdown, logo-download, and launch logic already live in each project's `Services\` folder
    - Violates Single Responsibility Principle
    - Should be refactored into separate layers (UI, business logic, data access, network)
 
-2. **HttpClient Instance Management** (MEDIUM PRIORITY)
-   - Each form creates its own HttpClient instance
-   - Should use IHttpClientFactory or singleton pattern
-   - Current approach can lead to socket exhaustion
-
 ### 🟡 Recommended Next Steps
 
-When resuming work on this codebase, prioritize in this order:
-
 1. Consider refactoring God classes (long-term maintainability)
-2. Implement IHttpClientFactory for HTTP client management
 
 ---
 

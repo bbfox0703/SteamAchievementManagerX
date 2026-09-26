@@ -65,11 +65,14 @@ incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.Display
 | `SAM.API\Steam.cs` | Native DLL loading (absolute path from HKLM `Software\Valve\Steam`, scoped via `AddDllDirectory` + `LoadLibrarySearchUserDirs`; no Authenticode/signature check) |
 | `SAM.API\NativeWrapper.cs` | Base class for Steam API wrappers |
 | `SAM.Game\KeyValue.cs` | VDF binary parser (critical for schema reading) |
-| `SAM.Picker\GamePicker.cs` | Game selection UI (1200+ lines) |
-| `SAM.Game\Manager.cs` | Achievement manager UI (1500+ lines) |
+| `SAM.Picker\GamePicker.cs` | Game selection UI |
+| `SAM.Picker\Services\` | Logo download queue, game list filtering, launching SAM.Game |
+| `SAM.Game\Manager.cs` | Achievement manager UI |
+| `SAM.Game\Services\` | Schema loading, achievement/stat data, icon cache, countdown timers |
 | `SAM.Game\Stats\AchievementInfo.cs` | Runtime achievement state |
 | `SAM.Game\Stats\AchievementDefinition.cs` | Schema definition |
 | `SAM.WinForms\ThemeHelper.cs` | Windows 11-aware theme engine |
+| `SAM.WinForms\HttpClientManager.cs` | Shared `HttpClient` used by all Picker and Game downloads |
 | `SAM.Picker\ImageUrlValidator.cs` | URL sanitization |
 
 ## Common Pitfalls
@@ -79,9 +82,9 @@ incompatible MTP v2 and cause `MissingMethodException` on `IOutputDevice.Display
 3. **AppID Context**: SAM.Game MUST be launched with AppID parameter. Don't run directly—use SAM.Picker.
 4. **VDF Binary vs Text**: Steam's VDF files come in two formats. This codebase uses binary format for schemas.
 5. **Achievement Permissions**: Some achievements are server-authoritative and cannot be unlocked via SAM.
-6. **Callback Timing**: Steam callbacks are async. Always check `IsValid` on callback data before use.
+6. **Callback Timing**: Steam callbacks arrive asynchronously through `Client.RunCallbacks()`. Check the callback struct's `Result` field before using its data (`UserStatsReceived.Result == 1` means OK; see `OnUserStatsReceived` in `SAM.Game\Manager.cs`), and handle failures inside the handler, because the dispatcher logs and swallows exceptions.
 7. **Path Separators**: Use `Path.Combine()` for cross-platform compatibility, even though this is Windows-only (future-proofing).
-8. **Unsafe Code**: Always enable `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` when working with SAM.API.
+8. **Unsafe Code**: SAM.API uses `unsafe` code for native interop; `<AllowUnsafeBlocks>` is already set in SAM.API and both test projects. A new project needs it only if it contains `unsafe` code itself.
 
 ## docs/ Directory
 

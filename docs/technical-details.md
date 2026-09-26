@@ -19,10 +19,10 @@ foreach (var child in root.Children) { ... }
 
 ## Security Measures
 
-1. **DLL Signature Validation** (`SAM.API\Steam.cs`):
-   - Verifies `steamclient64.dll` is signed by "Valve Corporation"
-   - Checks certificate subject name matches exactly
-   - Prevents DLL hijacking attacks
+1. **Scoped DLL Loading** (`SAM.API\Steam.cs`):
+   - Resolves `steamclient64.dll` by absolute path from the `InstallPath` value under HKLM `Software\Valve\Steam`
+   - Registers the Steam and Steam `bin` directories with `AddDllDirectory` and loads with `LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS`, so dependencies resolve only from the app directory, System32, and those Steam directories (never PATH or the current directory)
+   - There is no Authenticode/signature check on the DLL
 
 2. **Path Validation**:
    - Regex validation for cache filenames prevents path traversal
@@ -44,8 +44,8 @@ foreach (var child in root.Children) { ... }
 
 **Applying theme to a new form:**
 ```csharp
-// In form constructor
-ThemeHelper.ApplyTheme(this);
+// See UpdateColors() in SAM.Picker\GamePicker.cs and SAM.Game\Manager.cs
+ThemeHelper.ApplyTheme(this, this.BackColor, this.ForeColor);
 ```
 
 ## Unsafe Code Usage
@@ -55,4 +55,4 @@ SAM.API uses `unsafe` code blocks for:
 - Fast string conversion (UTF-8 ↔ UTF-16)
 - Direct memory access for VTable traversal
 
-**Important:** Always enable `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` in the `.csproj` when working with SAM.API.
+`<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` is set in `SAM.API.csproj` and both test projects; a new project needs it only if it contains `unsafe` code itself.
