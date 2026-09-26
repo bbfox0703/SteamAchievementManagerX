@@ -3,7 +3,7 @@
 ## Making UI Changes
 
 - Forms use Windows Forms Designer (`.Designer.cs` files)
-- Apply theme via `ThemeHelper.ApplyTheme(this)` in form constructor
+- Theme a form the way the existing forms' `UpdateColors()` does: set `BackColor`/`ForeColor` for the current Windows theme, call `ThemeHelper.ApplyTheme(this, this.BackColor, this.ForeColor)`, re-run it from a `SystemEvents.UserPreferenceChanged` handler, and unsubscribe that handler in `Dispose`
 - Use `DoubleBufferedListView` for flicker-free lists
 
 ## Adding Steam API Features

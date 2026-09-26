@@ -44,8 +44,8 @@ foreach (var child in root.Children) { ... }
 
 **Applying theme to a new form:**
 ```csharp
-// In form constructor
-ThemeHelper.ApplyTheme(this);
+// See UpdateColors() in SAM.Picker\GamePicker.cs and SAM.Game\Manager.cs
+ThemeHelper.ApplyTheme(this, this.BackColor, this.ForeColor);
 ```
 
 ## Unsafe Code Usage
